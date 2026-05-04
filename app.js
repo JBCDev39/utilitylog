@@ -1,77 +1,19 @@
-// ── STORAGE ──────────────────────────────────────────────────────────────────
+// ── STORAGE ───────────────────────────────────────────────────────────────────
 var DB_NAME='utilityInspect',DB_VER=1,STORE='data';
 var idb=null;
 var db={maps:[],units:[],trash:[]};
 var state={screen:'maps',mapId:null,unitId:null,filter:'All'};
 var patchCount=0;
-
-// ── FORM STATE PERSISTENCE (survives camera launch on Android) ────────────────
-// When the camera opens, Android may kill the page. We save form state to
-// sessionStorage immediately before launching the file picker, then restore it.
-var FORM_KEY='ulf_form';
-
-function saveFormState(){
-  try{
-    var fs={
-      mode: formState.mode,       // 'new' or 'edit'
-      unitId: formState.unitId,   // only for edit
-      mapId: state.mapId,
-      epcor: val('uEpcor'),
-      asap: val('uAsap'),
-      unitType: activeInSeg('uTypeSeg'),
-      status: activeInSeg('uStatSeg'),
-      failType: val('uFailType'),
-      patches: patchCount,
-      notes: val('uNotes'),
-      photoKey: formState.pendingPhotoKey,  // which slot we're filling
-      beforePhoto: formPhotos.before,
-      afterPhoto: formPhotos.after
-    };
-    sessionStorage.setItem(FORM_KEY, JSON.stringify(fs));
-  }catch(e){}
-}
-
-function clearFormState(){
-  try{sessionStorage.removeItem(FORM_KEY);}catch(e){}
-}
-
-function restoreFormIfNeeded(){
-  try{
-    var raw=sessionStorage.getItem(FORM_KEY);
-    if(!raw)return false;
-    var fs=JSON.parse(raw);
-    // Only restore if we still have a pending photo key — meaning camera was launched
-    if(!fs.photoKey)return false;
-    clearFormState();
-    // Restore map context
-    state.mapId=fs.mapId;
-    formPhotos={before:fs.beforePhoto||null,after:fs.afterPhoto||null};
-    patchCount=fs.patches||0;
-    formState={mode:fs.mode,unitId:fs.unitId||null,pendingPhotoKey:null};
-    // Re-open the form modal with saved values
-    if(fs.mode==='edit'){
-      var u=db.units.find(function(x){return x.id===fs.unitId;});
-      openUnitForm(u,fs);
-    } else {
-      openUnitForm(null,fs);
-    }
-    // After form renders, inject the restored photo into the pending slot
-    if(fs.photoKey){
-      setTimeout(function(){refreshFormPhotoSlot(fs.photoKey);},80);
-    }
-    return true;
-  }catch(e){return false;}
-}
-
 var formState={mode:'new',unitId:null,pendingPhotoKey:null};
 var formPhotos={before:null,after:null};
+var FORM_KEY='ulf_form';
 
 // ── INDEXED DB ────────────────────────────────────────────────────────────────
 function openIDB(cb){
   var req=indexedDB.open(DB_NAME,DB_VER);
   req.onupgradeneeded=function(e){
-    var store=e.target.result;
-    if(!store.objectStoreNames.contains(STORE)) store.createObjectStore(STORE);
+    if(!e.target.result.objectStoreNames.contains(STORE))
+      e.target.result.createObjectStore(STORE);
   };
   req.onsuccess=function(e){idb=e.target.result;cb();};
   req.onerror=function(){cb();};
@@ -95,19 +37,51 @@ function idbSave(){
   tx.objectStore(STORE).put(db,'db');
 }
 
+// ── FORM STATE PERSISTENCE (Android camera fix) ───────────────────────────────
+function saveFormState(){
+  try{
+    sessionStorage.setItem(FORM_KEY,JSON.stringify({
+      mode:formState.mode,unitId:formState.unitId,mapId:state.mapId,
+      epcor:val('uEpcor'),asap:val('uAsap'),
+      unitType:activeInSeg('uTypeSeg'),status:activeInSeg('uStatSeg'),
+      failType:val('uFailType'),patches:patchCount,notes:val('uNotes'),
+      photoKey:formState.pendingPhotoKey,
+      beforePhoto:formPhotos.before,afterPhoto:formPhotos.after
+    }));
+  }catch(e){}
+}
+function clearFormState(){try{sessionStorage.removeItem(FORM_KEY);}catch(e){}}
+function restoreFormIfNeeded(){
+  try{
+    var raw=sessionStorage.getItem(FORM_KEY);
+    if(!raw)return false;
+    var fs=JSON.parse(raw);
+    if(!fs.photoKey)return false;
+    clearFormState();
+    state.mapId=fs.mapId;
+    formPhotos={before:fs.beforePhoto||null,after:fs.afterPhoto||null};
+    patchCount=fs.patches||0;
+    formState={mode:fs.mode,unitId:fs.unitId||null,pendingPhotoKey:null};
+    var u=fs.mode==='edit'?db.units.find(function(x){return x.id===fs.unitId;}):null;
+    openUnitForm(u,fs);
+    setTimeout(function(){
+      refreshFormPhotoSlot('before');
+      refreshFormPhotoSlot('after');
+    },80);
+    return true;
+  }catch(e){return false;}
+}
+
 // ── UTILS ─────────────────────────────────────────────────────────────────────
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function toast(msg){
-  var t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
+  var t=$('toast');t.textContent=msg;t.classList.add('show');
   setTimeout(function(){t.classList.remove('show');},2400);
 }
 function $(id){return document.getElementById(id);}
 function qs(sel,ctx){return (ctx||document).querySelector(sel);}
 function val(id){var el=$(id);return el?el.value:'';}
-function activeInSeg(gid){
-  var el=qs('#'+gid+' .active');return el?el.textContent:'';
-}
+function activeInSeg(gid){var el=qs('#'+gid+' .active');return el?el.textContent:'';}
 function esc(s){
   if(!s)return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -124,21 +98,20 @@ function typeBadge(t){
   return t==='Pedestal'?'<span class="badge b-ped">Pedestal</span>':'<span class="badge b-trans">Transformer</span>';
 }
 function daysLeft(deletedAt){
-  var diff=30-Math.floor((Date.now()-deletedAt)/(1000*60*60*24));
-  return Math.max(0,diff);
+  return Math.max(0,30-Math.floor((Date.now()-deletedAt)/(1000*60*60*24)));
 }
+function showFab(){$('fab').style.display='flex';}
+function hideFab(){$('fab').style.display='none';}
 
 // ── NAVIGATION ────────────────────────────────────────────────────────────────
 function setScreen(name){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
-  var id='screen'+name.charAt(0).toUpperCase()+name.slice(1);
-  $(id).classList.add('active');
+  $('screen'+name.charAt(0).toUpperCase()+name.slice(1)).classList.add('active');
   state.screen=name;
   $('mainContent').scrollTop=0;
 }
 function goBack(){
   if(state.screen==='unit') showUnits(state.mapId);
-  else if(state.screen==='trash') showMaps();
   else showMaps();
 }
 function fabAction(){
@@ -152,12 +125,12 @@ function showMaps(){
   $('topTitle').textContent='UtilityLog';
   $('backWrap').style.display='none';
   $('filterRow').classList.remove('visible');
-  $('fab').style.display='flex';
-  // Purge expired trash
   purgeExpiredTrash();
   var trashCount=db.trash.length;
+  // Trash button in top bar, FAB is the + at bottom — no overlap
   $('topActs').innerHTML='<button class="btn btn-sm" onclick="showTrash()">'
-    +'🗑 Trash'+(trashCount?'<span class="trash-badge">'+trashCount+'</span>':'')+'</button>';
+    +'🗑'+(trashCount?'<span class="trash-badge">'+trashCount+'</span>':'')+'</button>';
+  showFab();
   renderMaps();setScreen('maps');
 }
 
@@ -169,18 +142,23 @@ function renderMaps(){
     var vegs=us.filter(function(u){return u.status==='Vegetation';}).length;
     var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
     var date=m.createdAt?new Date(m.createdAt).toLocaleDateString('en-CA'):'';
+    var thumbHtml=m.photo
+      ?'<img class="map-thumb" src="'+m.photo+'" onclick="viewMapPhoto(\''+m.id+'\')" alt="Map photo">'
+      :'<div class="map-thumb-placeholder" onclick="addMapPhoto(\''+m.id+'\')">🗺️</div>';
     return '<div class="card">'
       +'<div class="card-row" style="cursor:pointer" onclick="showUnits(\''+m.id+'\')">'
-      +'<div><div class="card-title">'+esc(m.name)+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="card-title">'+esc(m.name)+'</div>'
       +'<div class="card-sub">'+esc(m.location)+(date?' · '+date:'')+'</div>'
-      +'<div style="display:flex;gap:14px;margin-top:8px">'
+      +'<div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap">'
       +'<span style="font-size:12px;color:var(--text2)">'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'
       +(fails?'<span style="font-size:12px;color:var(--danger-text)">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')
       +(vegs?'<span style="font-size:12px;color:var(--grn-text)">'+vegs+' veg</span>':'')
       +(patches?'<span style="font-size:12px;color:var(--text2)">'+patches+' patch'+(patches>1?'es':'')+'</span>':'')
-      +'</div></div>'+typeBadge(m.type||'Pedestal')+'</div>'
+      +'</div></div>'+thumbHtml+'</div>'
       +'<div class="map-acts">'
       +'<button class="btn btn-sm" onclick="showUnits(\''+m.id+'\')">Open</button>'
+      +'<button class="btn btn-sm" onclick="addMapPhoto(\''+m.id+'\')">📷 '+(m.photo?'Change photo':'Add photo')+'</button>'
       +'<button class="btn btn-sm" onclick="softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')">Delete</button>'
       +'</div></div>';
   }).join('');
@@ -201,9 +179,40 @@ function renderMaps(){
   c.innerHTML=mapsHtml+dataHtml;
 }
 
+function addMapPhoto(mapId){
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';inp.capture='environment';
+  inp.onchange=function(){
+    var file=inp.files[0];if(!file)return;
+    // Compress map photo before storing
+    var reader=new FileReader();
+    reader.onload=function(e){
+      compressImage(e.target.result,1200,0.82,function(compressed){
+        var m=db.maps.find(function(x){return x.id===mapId;});
+        m.photo=compressed;
+        idbSave();renderMaps();toast('Map photo saved');
+      });
+    };reader.readAsDataURL(file);
+  };inp.click();
+}
+
+function viewMapPhoto(mapId){
+  var m=db.maps.find(function(x){return x.id===mapId;});
+  if(!m.photo)return;
+  openModal('<p class="modal-title">'+esc(m.name)+'</p>'
+    +'<img class="map-photo-full" src="'+m.photo+'" alt="Map photo">'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-danger" style="flex:1" onclick="removeMapPhoto(\''+mapId+'\')">Remove</button>'
+    +'<button class="btn" style="flex:1" onclick="closeModal()">Close</button></div>');
+}
+function removeMapPhoto(mapId){
+  var m=db.maps.find(function(x){return x.id===mapId;});
+  delete m.photo;idbSave();closeModal();renderMaps();toast('Photo removed');
+}
+
 // ── TRASH ─────────────────────────────────────────────────────────────────────
 function softDeleteMap(mapId,mapName){
-  if(!confirm('Move "'+mapName+'" to trash? It will be permanently deleted after 30 days.'))return;
+  if(!confirm('Move "'+mapName+'" to trash? Deleted maps are kept for 30 days.'))return;
   var map=db.maps.find(function(m){return m.id===mapId;});
   var units=db.units.filter(function(u){return u.mapId===mapId;});
   db.trash.push({map:map,units:units,deletedAt:Date.now()});
@@ -211,22 +220,18 @@ function softDeleteMap(mapId,mapName){
   db.units=db.units.filter(function(u){return u.mapId!==mapId;});
   idbSave();showMaps();toast('Map moved to trash');
 }
-
 function purgeExpiredTrash(){
   var before=db.trash.length;
   db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});
   if(db.trash.length!==before) idbSave();
 }
-
 function showTrash(){
   $('topTitle').textContent='Trash';
   $('backWrap').style.display='';
   $('topActs').innerHTML='';
   $('filterRow').classList.remove('visible');
-  $('fab').style.display='none';
-  renderTrash();setScreen('trash');
+  hideFab();renderTrash();setScreen('trash');
 }
-
 function renderTrash(){
   var c=$('screenTrash');
   if(!db.trash.length){
@@ -237,12 +242,11 @@ function renderTrash(){
   }
   c.innerHTML=db.trash.map(function(t,i){
     var days=daysLeft(t.deletedAt);
-    var units=t.units||[];
     return '<div class="card">'
-      +'<div class="card-row">'
-      +'<div><div class="card-title">'+esc(t.map.name)+'</div>'
+      +'<div class="card-row"><div>'
+      +'<div class="card-title">'+esc(t.map.name)+'</div>'
       +'<div class="card-sub">'+esc(t.map.location)+'</div>'
-      +'<div style="font-size:12px;color:var(--warn-text);margin-top:4px">Deleted · '+days+' day'+(days!==1?'s':'')+'  left</div>'
+      +'<div style="font-size:12px;color:var(--warn-text);margin-top:4px">'+days+' day'+(days!==1?'s':'')+' left</div>'
       +'</div>'+typeBadge(t.map.type||'Pedestal')+'</div>'
       +'<div class="map-acts">'
       +'<button class="btn btn-sm" onclick="restoreMap('+i+')">Restore</button>'
@@ -250,18 +254,15 @@ function renderTrash(){
       +'</div></div>';
   }).join('');
 }
-
 function restoreMap(idx){
   var t=db.trash[idx];
   db.maps.push(t.map);
   (t.units||[]).forEach(function(u){db.units.push(u);});
   db.trash.splice(idx,1);
-  idbSave();renderTrash();showMaps();toast('Map restored');
+  idbSave();showMaps();toast('Map restored');
 }
-
 function permanentDeleteMap(idx){
-  var t=db.trash[idx];
-  if(!confirm('Permanently delete "'+t.map.name+'"? This cannot be undone.'))return;
+  if(!confirm('Permanently delete "'+db.trash[idx].map.name+'"? Cannot be undone.'))return;
   db.trash.splice(idx,1);
   idbSave();renderTrash();toast('Permanently deleted');
 }
@@ -272,17 +273,15 @@ function showUnits(mapId){
   var map=db.maps.find(function(m){return m.id===mapId;});
   $('topTitle').textContent=esc(map.name);
   $('backWrap').style.display='';
+  // Summary and PDF in top bar — no FAB overlap since FAB is fixed bottom
   $('topActs').innerHTML=
     '<button class="btn btn-sm" onclick="showSummary()">Summary</button>'
     +'<button class="btn btn-sm" onclick="exportPDF()">PDF</button>';
   $('filterSelect').value='All';
   $('filterRow').classList.add('visible');
-  $('fab').style.display='flex';
-  renderUnits();setScreen('units');
+  showFab();renderUnits();setScreen('units');
 }
-
 function setFilter(f){state.filter=f;renderUnits();}
-
 function renderUnits(){
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   if(state.filter!=='All') us=us.filter(function(u){return u.status===state.filter;});
@@ -298,7 +297,7 @@ function renderUnits(){
     var photos=(u.beforePhoto?1:0)+(u.afterPhoto?1:0);
     return '<div class="card card-tap" onclick="showUnit(\''+u.id+'\')">'
       +'<div class="card-row"><span class="card-title">'+esc(u.epcor)+'</span>'+statusBadge(u.status)+'</div>'
-      +'<div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap">'
+      +'<div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap">'
       +(u.asap?'<span class="card-sub">ASAP #'+esc(u.asap)+'</span>':'')
       +(u.failType?'<span class="card-sub">· '+esc(u.failType)+'</span>':'')
       +(u.patches?'<span class="card-sub">· '+u.patches+' patch'+(u.patches>1?'es':'')+'</span>':'')
@@ -315,20 +314,16 @@ function showUnit(id){
   $('backWrap').style.display='';
   $('filterRow').classList.remove('visible');
   $('topActs').innerHTML='<button class="btn btn-sm" onclick="startEditUnit(\''+id+'\')">Edit</button>';
-  $('fab').style.display='none';
-  renderUnitDetail(u);setScreen('unit');
+  hideFab();renderUnitDetail(u);setScreen('unit');
 }
-
 function renderUnitDetail(u){
   var isFail=u.status==='Fail'||u.status==='Door Fail';
-  var showAfter=isFail||u.status==='Vegetation';
   var html='<div class="unit-header">'
     +'<div class="card-row"><div>'
     +'<div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">'+esc(u.epcor)+'</div>'
     +(u.asap?'<div style="font-size:13px;color:var(--text2);margin-top:2px">ASAP #'+esc(u.asap)+'</div>':'')
     +'</div>'+statusBadge(u.status)+'</div>'
     +'<div style="margin-top:10px">'+typeBadge(u.unitType||'Pedestal')+'</div></div>';
-
   if(isFail){
     html+='<div class="section-lbl">Fail details</div>'
       +'<div class="row-detail"><span style="font-size:13px;color:var(--text2)">Type</span>'
@@ -336,14 +331,13 @@ function renderUnitDetail(u){
       +'<div class="row-detail"><span style="font-size:13px;color:var(--text2)">Patches</span>'
       +'<span style="font-size:18px;font-weight:700;color:var(--grn)">'+(u.patches||0)+'</span></div>';
   }
-  if(u.status==='Vegetation') html+='<div style="padding:10px 0;font-size:14px;color:var(--text2)">Vegetation noted — no patch required.</div>';
-  if(u.status==='No Access') html+='<div style="padding:10px 0;font-size:14px;color:var(--text2)">Unit not accessible during inspection.</div>';
-
-  html+='<div class="section-lbl">Photos</div><div class="photo-grid">';
-  html+=detailPhotoSlot(u,'before','Before');
-  if(showAfter) html+=detailPhotoSlot(u,'after',isFail?'After patch':'Vegetation');
-  html+='</div>';
-
+  if(u.status==='Vegetation') html+='<div style="padding:10px 0;font-size:14px;color:var(--text2)">Vegetation noted.</div>';
+  if(u.status==='No Access') html+='<div style="padding:10px 0;font-size:14px;color:var(--text2)">Unit not accessible.</div>';
+  // Always show both photo slots
+  html+='<div class="section-lbl">Photos</div><div class="photo-grid">'
+    +detailPhotoSlot(u,'before','Before')
+    +detailPhotoSlot(u,'after','After')
+    +'</div>';
   if(u.notes){
     html+='<div class="section-lbl">Notes</div>'
       +'<div style="font-size:14px;line-height:1.65;color:var(--text2)">'+esc(u.notes)+'</div>';
@@ -352,44 +346,41 @@ function renderUnitDetail(u){
     +'<button class="btn btn-danger" style="width:100%" onclick="deleteUnit(\''+u.id+'\')">Delete unit</button></div>';
   $('screenUnit').innerHTML=html;
 }
-
 function detailPhotoSlot(u,key,label){
   var p=u[key+'Photo'];
-  if(p) return '<div class="photo-slot" onclick="viewPhoto(\''+u.id+'\',\''+key+'\')">'
+  if(p) return '<div class="photo-slot" onclick="viewDetailPhoto(\''+u.id+'\',\''+key+'\')">'
     +'<img src="'+p+'" alt="'+label+'">'
     +'<span style="position:absolute;bottom:5px;left:7px;background:rgba(0,0,0,0.55);color:#fff;padding:2px 7px;border-radius:5px;font-size:10px;font-weight:600;z-index:1">'+label+'</span></div>';
   return '<div class="photo-slot" onclick="detailPickPhoto(\''+u.id+'\',\''+key+'\')">'
     +'<span class="p-ico">+</span><span class="p-lbl">'+label+'</span></div>';
 }
-
 function detailPickPhoto(unitId,key){
   openModal('<p class="modal-title">Add photo</p>'
     +'<div style="display:flex;flex-direction:column;gap:10px;padding-bottom:6px">'
-    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="detailLaunchCamera(\''+unitId+'\',\''+key+'\',true)">📷 Take photo</button>'
-    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="detailLaunchCamera(\''+unitId+'\',\''+key+'\',false)">🖼️ Choose from gallery</button>'
+    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="detailLaunch(\''+unitId+'\',\''+key+'\',true)">📷 Take photo</button>'
+    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="detailLaunch(\''+unitId+'\',\''+key+'\',false)">🖼️ Choose from gallery</button>'
     +'<button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Cancel</button>'
     +'</div>');
 }
-
-function detailLaunchCamera(unitId,key,useCamera){
+function detailLaunch(unitId,key,cam){
   closeModal();
   var inp=document.createElement('input');
-  inp.type='file';inp.accept='image/*';
-  if(useCamera) inp.capture='environment';
+  inp.type='file';inp.accept='image/*';if(cam) inp.capture='environment';
   inp.onchange=function(){
     var file=inp.files[0];if(!file)return;
     var r=new FileReader();
     r.onload=function(e){
-      var u=db.units.find(function(x){return x.id===unitId;});
-      u[key+'Photo']=e.target.result;
-      idbSave();
-      renderUnitDetail(db.units.find(function(x){return x.id===state.unitId;}));
-      toast('Photo saved');
+      compressImage(e.target.result,1600,0.85,function(compressed){
+        var u=db.units.find(function(x){return x.id===unitId;});
+        u[key+'Photo']=compressed;
+        idbSave();
+        renderUnitDetail(db.units.find(function(x){return x.id===state.unitId;}));
+        toast('Photo saved');
+      });
     };r.readAsDataURL(file);
   };inp.click();
 }
-
-function viewPhoto(unitId,key){
+function viewDetailPhoto(unitId,key){
   var u=db.units.find(function(x){return x.id===unitId;});
   var label=key==='before'?'Before':'After';
   openModal('<p class="modal-title">'+label+'</p>'
@@ -416,7 +407,6 @@ function showNewUnitModal(){
   formState={mode:'new',unitId:null,pendingPhotoKey:null};
   openUnitForm(null,null);
 }
-
 function startEditUnit(id){
   var u=db.units.find(function(x){return x.id===id;});
   patchCount=u.patches||0;
@@ -424,15 +414,11 @@ function startEditUnit(id){
   formState={mode:'edit',unitId:id,pendingPhotoKey:null};
   openUnitForm(u,null);
 }
-
-// u = existing unit (edit) or null (new)
-// saved = restored sessionStorage state or null
 function openUnitForm(u,saved){
   var status=saved?saved.status:(u?u.status:'Clean');
   var isFail=status==='Fail'||status==='Door Fail';
   var unitType=saved?saved.unitType:(u?u.unitType:'Pedestal');
   var isPed=unitType==='Pedestal';
-
   var html='<p class="modal-title">'+(u&&!saved?'Edit '+esc(u.epcor):'Add unit')+'</p>'
     +'<div class="form-group"><label class="form-label">EPCOR #</label>'
     +'<input id="uEpcor" value="'+(saved?esc(saved.epcor):(u?esc(u.epcor):''))+'" '
@@ -442,7 +428,7 @@ function openUnitForm(u,saved){
     +'<input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/></div>'
     +'<div class="form-group"><label class="form-label">Unit type</label><div class="seg" id="uTypeSeg">'
     +['Pedestal','Transformer'].map(function(t){
-      var active=(saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal'));
+      var active=saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal');
       return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uTypeSeg\',this);onUnitTypeChange(this)">'+t+'</button>';
     }).join('')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Status</label><div class="seg" id="uStatSeg">'
@@ -452,82 +438,60 @@ function openUnitForm(u,saved){
     +'<div id="failFields" style="display:'+(isFail?'block':'none')+'">'
     +'<div class="form-group"><label class="form-label">Fail type</label><select id="uFailType">'
     +['Rust Holes (Unit)','Rust Holes (Door)','Oil Leak'].map(function(f){
-      var sel=(saved?saved.failType===f:(u&&u.failType===f));
+      var sel=saved?saved.failType===f:(u&&u.failType===f);
       return '<option'+(sel?' selected':'')+'>'+f+'</option>';
     }).join('')+'</select></div>'
     +'<div class="form-group"><label class="form-label">Patches</label>'
-    +'<div class="patch-ctrl">'
-    +'<button class="patch-btn" onclick="adjP(-1)">−</button>'
+    +'<div class="patch-ctrl"><button class="patch-btn" onclick="adjP(-1)">−</button>'
     +'<span class="patch-val" id="pNum">'+(saved?saved.patches:(u?u.patches||0:0))+'</span>'
-    +'<button class="patch-btn" onclick="adjP(1)">+</button>'
-    +'</div></div></div>'
+    +'<button class="patch-btn" onclick="adjP(1)">+</button></div></div></div>'
+    // Always show both before AND after photo slots
     +'<div class="form-group"><label class="form-label">Before photo</label>'
     +'<div class="photo-form-wrap" id="formPhoto_before">'+formPhotoSlotInner('before')+'</div></div>'
-    +'<div class="form-group" id="afterPhotoGroup" style="display:'+(isFail?'block':'none')+'">'
-    +'<label class="form-label">After photo</label>'
+    +'<div class="form-group"><label class="form-label">After photo</label>'
     +'<div class="photo-form-wrap" id="formPhoto_after">'+formPhotoSlotInner('after')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label>'
     +'<textarea id="uNotes" rows="2" placeholder="Optional notes...">'+(saved?esc(saved.notes||''):(u?esc(u.notes||''):''))+'</textarea></div>'
-    +(formState.mode==='edit'
-      ?'<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">Save changes</button>'
-      :'<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">Add unit</button>');
-
+    +'<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">'
+    +(formState.mode==='edit'?'Save changes':'Add unit')+'</button>';
   openModal(html);
   if(saved) patchCount=saved.patches||0;
 }
-
 function onUnitTypeChange(btn){
-  var isPed=btn.textContent==='Pedestal';
-  var inp=$('uEpcor');
-  if(inp) inp.placeholder=isPed?'e.g. PED15828':'e.g. T1234';
+  var el=$('uEpcor');
+  if(el) el.placeholder=btn.textContent==='Pedestal'?'e.g. PED15828':'e.g. T1234';
 }
-
-function onEpcorInput(inp){
-  // If unit type is pedestal and they haven't typed PED yet, keep placeholder
-  // No auto-insertion — just placeholder hint as requested
-}
-
+function onEpcorInput(){}
 function adjP(d){patchCount=Math.max(0,patchCount+d);$('pNum').textContent=patchCount;}
-
 function chkFail(){
   var s=activeInSeg('uStatSeg');
   var isFail=s==='Fail'||s==='Door Fail';
   $('failFields').style.display=isFail?'block':'none';
-  var ag=$('afterPhotoGroup');if(ag) ag.style.display=isFail?'block':'none';
 }
-
 function submitUnitForm(){
   var epcor=val('uEpcor').trim();if(!epcor){toast('EPCOR # is required');return;}
   var status=activeInSeg('uStatSeg');
   var isFail=status==='Fail'||status==='Door Fail';
-
   if(formState.mode==='edit'){
     var u=db.units.find(function(x){return x.id===formState.unitId;});
-    u.epcor=epcor;
-    u.asap=val('uAsap').trim();
-    u.unitType=activeInSeg('uTypeSeg');
-    u.status=status;
-    u.failType=isFail?val('uFailType'):'';
-    u.patches=isFail?patchCount:0;
+    u.epcor=epcor;u.asap=val('uAsap').trim();
+    u.unitType=activeInSeg('uTypeSeg');u.status=status;
+    u.failType=isFail?val('uFailType'):'';u.patches=isFail?patchCount:0;
     u.notes=val('uNotes').trim();
     if(formPhotos.before) u.beforePhoto=formPhotos.before;
-    else if(formPhotos.before===null&&!u.beforePhoto) delete u.beforePhoto;
-    if(formPhotos.after&&isFail) u.afterPhoto=formPhotos.after;
-    else if(!isFail) delete u.afterPhoto;
+    if(formPhotos.after) u.afterPhoto=formPhotos.after;
+    if(formPhotos.before===null) delete u.beforePhoto;
+    if(formPhotos.after===null) delete u.afterPhoto;
     idbSave();clearFormState();closeModal();
     $('topTitle').textContent=esc(u.epcor);
     renderUnitDetail(u);toast('Saved');
   } else {
-    var nu={id:uid(),mapId:state.mapId,epcor:epcor,
-      asap:val('uAsap').trim(),
-      unitType:activeInSeg('uTypeSeg'),
-      status:status,
-      failType:isFail?val('uFailType'):'',
-      patches:isFail?patchCount:0,
-      notes:val('uNotes').trim(),
-      createdAt:Date.now()};
+    var nu={id:uid(),mapId:state.mapId,epcor:epcor,asap:val('uAsap').trim(),
+      unitType:activeInSeg('uTypeSeg'),status:status,
+      failType:isFail?val('uFailType'):'',patches:isFail?patchCount:0,
+      notes:val('uNotes').trim(),createdAt:Date.now()};
     if(formPhotos.before) nu.beforePhoto=formPhotos.before;
-    if(formPhotos.after&&isFail) nu.afterPhoto=formPhotos.after;
+    if(formPhotos.after) nu.afterPhoto=formPhotos.after;
     db.units.push(nu);
     idbSave();clearFormState();closeModal();
     patchCount=0;formPhotos={before:null,after:null};
@@ -537,56 +501,64 @@ function submitUnitForm(){
 
 // ── FORM PHOTO SLOTS ──────────────────────────────────────────────────────────
 function formPhotoSlotInner(key){
-  var label=key==='before'?'Before':'After patch';
+  var label=key==='before'?'Before':'After';
   if(formPhotos[key]){
     return '<img class="photo-form-preview" src="'+formPhotos[key]+'" alt="'+label+'">'
       +'<div class="photo-form-actions">'
-      +'<button onclick="formPickPhoto(\''+key+'\',true)">📷 Retake</button>'
-      +'<button onclick="formPickPhoto(\''+key+'\',false)">🖼️ Gallery</button>'
+      +'<button onclick="formLaunch(\''+key+'\',true)">📷 Retake</button>'
+      +'<button onclick="formLaunch(\''+key+'\',false)">🖼️ Gallery</button>'
       +'<button onclick="formRemovePhoto(\''+key+'\')">Remove</button>'
       +'</div>';
   }
-  return '<div class="photo-form-empty" onclick="formPickPhoto(\''+key+'\',false)">'
+  return '<div class="photo-form-empty" onclick="formLaunch(\''+key+'\',false)">'
     +'<span class="pfe-ico">+</span><span class="pfe-lbl">Tap to add</span></div>'
     +'<div class="photo-form-actions">'
-    +'<button onclick="formPickPhoto(\''+key+'\',true)">📷 Camera</button>'
-    +'<button onclick="formPickPhoto(\''+key+'\',false)">🖼️ Gallery</button>'
+    +'<button onclick="formLaunch(\''+key+'\',true)">📷 Camera</button>'
+    +'<button onclick="formLaunch(\''+key+'\',false)">🖼️ Gallery</button>'
     +'</div>';
 }
-
 function refreshFormPhotoSlot(key){
   var slot=$('formPhoto_'+key);
   if(slot) slot.innerHTML=formPhotoSlotInner(key);
 }
-
 function formRemovePhoto(key){
-  formPhotos[key]=null;
-  refreshFormPhotoSlot(key);
-  saveFormState();
+  formPhotos[key]=null;refreshFormPhotoSlot(key);saveFormState();
 }
-
-function formPickPhoto(key,useCamera){
-  // Save all current form state BEFORE launching camera
-  // so if Android kills the page we can restore it
+function formLaunch(key,cam){
   formState.pendingPhotoKey=key;
   saveFormState();
-
   var inp=document.createElement('input');
-  inp.type='file';inp.accept='image/*';
-  if(useCamera) inp.capture='environment';
+  inp.type='file';inp.accept='image/*';if(cam) inp.capture='environment';
   inp.onchange=function(){
     var file=inp.files[0];if(!file)return;
     var r=new FileReader();
     r.onload=function(e){
-      formPhotos[key]=e.target.result;
-      formState.pendingPhotoKey=null;
-      // Save updated state including the photo
-      saveFormState();
-      refreshFormPhotoSlot(key);
-      toast('Photo added');
+      compressImage(e.target.result,1600,0.85,function(compressed){
+        formPhotos[key]=compressed;
+        formState.pendingPhotoKey=null;
+        saveFormState();
+        refreshFormPhotoSlot(key);
+        toast('Photo added');
+      });
     };r.readAsDataURL(file);
+  };inp.click();
+}
+
+// ── IMAGE COMPRESSION ─────────────────────────────────────────────────────────
+function compressImage(dataUrl,maxDim,quality,cb){
+  var img=new Image();
+  img.onload=function(){
+    var w=img.width,h=img.height;
+    if(w>maxDim||h>maxDim){
+      if(w>h){h=Math.round(h*maxDim/w);w=maxDim;}
+      else{w=Math.round(w*maxDim/h);h=maxDim;}
+    }
+    var canvas=document.createElement('canvas');
+    canvas.width=w;canvas.height=h;
+    canvas.getContext('2d').drawImage(img,0,0,w,h);
+    cb(canvas.toDataURL('image/jpeg',quality));
   };
-  inp.click();
+  img.src=dataUrl;
 }
 
 // ── NEW MAP ───────────────────────────────────────────────────────────────────
@@ -602,14 +574,45 @@ function showNewMapModal(){
     +'<button onclick="segSel(\'mTypeSeg\',this)">Transformer</button>'
     +'<button onclick="segSel(\'mTypeSeg\',this)">Mixed</button>'
     +'</div></div>'
+    +'<div class="form-group"><label class="form-label">Map photo (optional)</label>'
+    +'<div class="photo-form-wrap" id="newMapPhoto"><div class="photo-form-empty" onclick="pickNewMapPhoto()">'
+    +'<span class="pfe-ico">+</span><span class="pfe-lbl">Tap to add</span></div>'
+    +'<div class="photo-form-actions"><button onclick="pickNewMapPhoto()">📷 Camera</button>'
+    +'<button onclick="pickNewMapPhotoGallery()">🖼️ Gallery</button></div></div></div>'
     +'<button class="btn btn-primary" style="width:100%;padding:13px;font-size:15px" onclick="createMap()">Create map</button>');
   setTimeout(function(){var el=$('mName');if(el)el.focus();},150);
 }
+
+var newMapPhoto=null;
+function pickNewMapPhoto(){pickNewMapPhotoWith(true);}
+function pickNewMapPhotoGallery(){pickNewMapPhotoWith(false);}
+function pickNewMapPhotoWith(cam){
+  var inp=document.createElement('input');
+  inp.type='file';inp.accept='image/*';if(cam) inp.capture='environment';
+  inp.onchange=function(){
+    var file=inp.files[0];if(!file)return;
+    var r=new FileReader();
+    r.onload=function(e){
+      compressImage(e.target.result,1200,0.82,function(compressed){
+        newMapPhoto=compressed;
+        var slot=$('newMapPhoto');
+        if(slot) slot.innerHTML='<img class="photo-form-preview" src="'+compressed+'" alt="Map photo">'
+          +'<div class="photo-form-actions"><button onclick="pickNewMapPhoto()">📷 Retake</button>'
+          +'<button onclick="pickNewMapPhotoGallery()">🖼️ Gallery</button>'
+          +'<button onclick="newMapPhoto=null;$(\'newMapPhoto\').innerHTML=\'<div class=\\\"photo-form-empty\\\" onclick=\\\"pickNewMapPhoto()\\\"><span class=\\\"pfe-ico\\\">+</span><span class=\\\"pfe-lbl\\\">Tap to add</span></div><div class=\\\"photo-form-actions\\\"><button onclick=\\\"pickNewMapPhoto()\\\">📷 Camera</button><button onclick=\\\"pickNewMapPhotoGallery()\\\">🖼️ Gallery</button></div>\'">Remove</button>'
+          +'</div>';
+        toast('Photo added');
+      });
+    };r.readAsDataURL(file);
+  };inp.click();
+}
 function createMap(){
   var name=val('mName').trim();if(!name)return;
-  db.maps.push({id:uid(),name:name,location:val('mLoc').trim(),
-    type:activeInSeg('mTypeSeg'),createdAt:Date.now()});
-  idbSave();closeModal();renderMaps();toast('Map created');
+  var m={id:uid(),name:name,location:val('mLoc').trim(),
+    type:activeInSeg('mTypeSeg'),createdAt:Date.now()};
+  if(newMapPhoto) m.photo=newMapPhoto;
+  newMapPhoto=null;
+  db.maps.push(m);idbSave();closeModal();renderMaps();toast('Map created');
 }
 
 // ── SUMMARY ───────────────────────────────────────────────────────────────────
@@ -644,7 +647,7 @@ function showSummary(){
 
 // ── PDF ───────────────────────────────────────────────────────────────────────
 function exportPDF(){
-  if(typeof jspdf==='undefined'){toast('PDF loading, try again in a moment');return;}
+  if(typeof jspdf==='undefined'){toast('PDF loading, try again');return;}
   var map=db.maps.find(function(m){return m.id===state.mapId;});
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   us.sort(function(a,b){return (a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});
@@ -660,13 +663,10 @@ function exportPDF(){
   doc.text(map.location+'  ·  '+map.type+'  ·  '+date,14,27);
   doc.setTextColor(0);
   doc.text('Total: '+us.length+'   Fails: '+fails+'   Patches: '+patches+'   Veg: '+veg,14,34);
-  var rows=us.map(function(u){
-    return [u.epcor||'',u.asap||'',u.unitType||'',u.status,u.failType||'—',u.patches||0,u.notes||''];
-  });
   doc.autoTable({
     startY:40,
     head:[['EPCOR #','ASAP #','Type','Status','Fail type','Patches','Notes']],
-    body:rows,
+    body:us.map(function(u){return [u.epcor||'',u.asap||'',u.unitType||'',u.status,u.failType||'—',u.patches||0,u.notes||''];}),
     styles:{fontSize:9,cellPadding:3,overflow:'linebreak'},
     headStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:9},
     alternateRowStyles:{fillColor:[240,253,244]},
@@ -699,12 +699,12 @@ function importBackup(e){
   var r=new FileReader();
   r.onload=function(ev){
     try{
-      var parsed=JSON.parse(ev.target.result);
-      if(parsed.maps&&parsed.units){
+      var p=JSON.parse(ev.target.result);
+      if(p.maps&&p.units){
         if(!confirm('Replace all current data with this backup?'))return;
-        if(!parsed.trash) parsed.trash=[];
-        db=parsed;idbSave();showMaps();toast('Backup imported!');
-      }else{toast('Invalid backup file');}
+        if(!p.trash) p.trash=[];
+        db=p;idbSave();showMaps();toast('Backup imported!');
+      }else toast('Invalid backup file');
     }catch(err){toast('Could not read file');}
   };r.readAsText(file);e.target.value='';
 }
@@ -714,10 +714,7 @@ function openModal(html){
   $('modalBox').innerHTML='<div class="modal-handle"></div>'+html;
   $('overlay').classList.add('open');
 }
-function closeModal(){
-  $('overlay').classList.remove('open');
-  patchCount=0;
-}
+function closeModal(){$('overlay').classList.remove('open');patchCount=0;}
 function closeModalOutside(e){if(e.target===$('overlay'))closeModal();}
 
 // ── SERVICE WORKER ────────────────────────────────────────────────────────────
@@ -725,19 +722,13 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 
-// ── PDF SCRIPTS ───────────────────────────────────────────────────────────────
-var s1=document.createElement('script');
-s1.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-document.head.appendChild(s1);
-var s2=document.createElement('script');
-s2.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js';
-document.head.appendChild(s2);
+// ── PDF LIBS ──────────────────────────────────────────────────────────────────
+[
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js'
+].forEach(function(src){var s=document.createElement('script');s.src=src;document.head.appendChild(s);});
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
-openIDB(function(){
-  idbGet(function(){
-    // Check if we're returning from a camera launch mid-form
-    var restored=restoreFormIfNeeded();
-    if(!restored) showMaps();
-  });
-});
+openIDB(function(){idbGet(function(){
+  if(!restoreFormIfNeeded()) showMaps();
+});});
