@@ -1,4 +1,4 @@
-var CACHE='utilitylog-v1';
+var CACHE='utilitylog-v4';
 var ASSETS=[
   '/',
   '/index.html',
