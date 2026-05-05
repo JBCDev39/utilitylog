@@ -2,7 +2,7 @@
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
 var STATUS_ORDER={Fail:0,Vegetation:1,'No Access':2,Clean:3};
 var FORM_KEY='ulf_form';
-var DRAFT_KEY='ulf_draft';
+var DRAFT_KEY='ulf_drafts'; // array of drafts per map
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 var DB_NAME='utilityInspect',DB_VER=1,STORE='data';
@@ -67,23 +67,27 @@ function restoreFormIfNeeded(){
 }
 
 // ── DRAFT (form abandoned without saving) ────────────────────────────────────
+function getAllDrafts(){try{var r=sessionStorage.getItem(DRAFT_KEY);return r?JSON.parse(r):[];}catch(e){return [];}}
+function getDraftsForMap(mapId){return getAllDrafts().filter(function(d){return d.mapId===mapId;});}
 function saveDraft(){
   try{
     var epcor=val('uEpcor').trim();
-    if(!epcor)return; // nothing worth saving
-    sessionStorage.setItem(DRAFT_KEY,JSON.stringify({
-      mapId:state.mapId,
+    if(!epcor)return;
+    var drafts=getAllDrafts();
+    drafts.push({
+      id:uid(),mapId:state.mapId,
       epcor:epcor,asap:val('uAsap'),
       unitType:activeInSeg('uTypeSeg'),status:activeInSeg('uStatSeg'),
       failType:formState.failTypeVal||FAIL_TYPES[0],patches:patchCount,notes:val('uNotes'),
       beforePhoto:formPhotos.before,afterPhoto:formPhotos.after,
       savedAt:Date.now()
-    }));
+    });
+    sessionStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));
   }catch(e){}
 }
-function clearDraft(){try{sessionStorage.removeItem(DRAFT_KEY);}catch(e){}}
-function getDraft(){try{var r=sessionStorage.getItem(DRAFT_KEY);return r?JSON.parse(r):null;}catch(e){return null;}}
-function hasDraftForMap(mapId){var d=getDraft();return d&&d.mapId===mapId;}
+function removeDraft(draftId){try{var drafts=getAllDrafts().filter(function(d){return d.id!==draftId;});sessionStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch(e){}}
+function clearDraft(){try{var drafts=getAllDrafts().filter(function(d){return d.mapId!==state.mapId;});sessionStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch(e){}}
+function hasDraftForMap(mapId){return getDraftsForMap(mapId).length>0;}
 
 // ── UNIT HISTORY ──────────────────────────────────────────────────────────────
 function recordHistory(u,prevSnapshot){
@@ -238,7 +242,8 @@ function showMaps(dir){
   state.mapId=null;state.unitId=null;
   $('topTitle').textContent='UtilityLog';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
-  $('topActs').innerHTML='<button class="btn btn-sm" onclick="showTrash()">Trash'+(tc?'<span class="trash-badge">'+tc+'</span>':'')+'</button>';
+  var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
   showFabSingle();renderMaps();setScreen('maps',dir||'fade');
 }
 function renderMaps(){
@@ -318,8 +323,10 @@ function renderUnits(){
   var c=$('screenUnits');
   var draftHtml='';
   if(hasDraft){
-    var d=getDraft();
-    draftHtml='<div class="draft-banner" onclick="resumeDraft()"><div><div class="draft-banner-text">Draft — '+esc(d.epcor||'Unsaved unit')+'</div><div class="draft-banner-sub">Tap to resume</div></div><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1 1l6 5.5L1 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
+    var mapDrafts=getDraftsForMap(state.mapId);
+    var draftCount=mapDrafts.length;
+    var draftLabel=draftCount===1?('Draft — '+esc(mapDrafts[0].epcor||'Unsaved unit')):draftCount+' drafts saved';
+    draftHtml='<div class="draft-banner" onclick="showDraftList()"><div><div class="draft-banner-text">'+draftLabel+'</div><div class="draft-banner-sub">Tap to resume</div></div><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M1 1l6 5.5L1 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>';
   }
   if(!us.length){c.innerHTML=draftHtml+'<div class="empty-state"><div class="empty-title">'+(q?'No results':'No units yet')+'</div><div class="empty-sub">'+(q||state.filter!=='All'?'Try a different search or filter':'Tap + to add a unit')+'</div></div>';return;}
   var incompleteUnits=db.units.filter(function(u){return u.mapId===state.mapId&&isUnitIncomplete(u);});
@@ -347,14 +354,39 @@ function showIncompleteQueue(){
 }
 
 // ── DRAFT ─────────────────────────────────────────────────────────────────────
-function resumeDraft(){
-  var d=getDraft();if(!d)return;
+function showDraftList(){
+  var drafts=getDraftsForMap(state.mapId);
+  if(!drafts.length)return;
+  if(drafts.length===1){resumeDraftById(drafts[0].id);return;}
+  var html='<p class="modal-title">Drafts ('+drafts.length+')</p>';
+  html+=drafts.slice().reverse().map(function(d){
+    var time=new Date(d.savedAt).toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
+    var dateStr=new Date(d.savedAt).toLocaleDateString('en-CA');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:0.5px solid var(--border);gap:10px">'
+      +'<div style="cursor:pointer;flex:1" onclick="closeModal();resumeDraftById(''+d.id+'')">'
+      +'<div style="font-family:monospace;font-size:14px;font-weight:600;color:var(--draft)">'+esc(d.epcor)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+dateStr+' at '+time+(d.status?' · '+d.status:'')+'</div>'
+      +'</div>'
+      +'<button class="btn btn-sm btn-danger" onclick="removeDraft(''+d.id+'');renderUnits();closeModal()">Discard</button>'
+      +'</div>';
+  }).join('');
+  html+='<div style="display:flex;gap:8px;margin-top:16px">'
+    +'<button class="btn btn-danger" style="flex:1" onclick="clearDraft();renderUnits();closeModal()">Discard all</button>'
+    +'<button class="btn" style="flex:1" onclick="closeModal()">Cancel</button>'
+    +'</div>';
+  openModal(html);
+}
+function resumeDraftById(draftId){
+  var drafts=getAllDrafts();
+  var d=drafts.find(function(x){return x.id===draftId;});
+  if(!d)return;
+  removeDraft(draftId);
   formPhotos={before:d.beforePhoto||null,after:d.afterPhoto||null};
   patchCount=d.patches||0;
   formState={mode:'new',unitId:null,pendingPhotoKey:null,failTypeVal:d.failType||FAIL_TYPES[0]};
   openUnitForm(null,d);
 }
-function discardDraft(){clearDraft();renderUnits();toast('Draft discarded');}
+function discardDraft(){clearDraft();renderUnits();toast('Drafts discarded');}
 
 // ── GALLERY ───────────────────────────────────────────────────────────────────
 function showGallery(){
@@ -481,7 +513,7 @@ function openUnitForm(u,saved){
   var gpsSVG='<svg width="14" height="14" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
   var chevSVG='<svg width="12" height="7" viewBox="0 0 12 7" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var html='<p class="modal-title">'+(u&&!saved?'Edit '+esc(u.epcor):(saved?'Resume draft':'Add unit'))+'</p>'
-    +'<div class="form-group"><label class="form-label">EPCOR # <span style="color:var(--fail);font-size:10px">required</span></label><input id="uEpcor" value="'+(saved?esc(saved.epcor):(u?esc(u.epcor):''))+'" placeholder="'+(unitType==='Pedestal'?'e.g. PED15828':'e.g. T1234')+'" autocomplete="off" autocorrect="off" spellcheck="false" oninput="onEpcorInput()"/><div class="field-warn" id="warnEpcor">EPCOR # is required</div></div>'
+    +'<div class="form-group"><label class="form-label">EPCOR # <span style="color:var(--fail);font-size:10px">required</span></label><input id="uEpcor" value="'+(saved?esc(saved.epcor):(u?esc(u.epcor):''))+'" placeholder="'+(unitType==='Pedestal'?'e.g. PED15828':'e.g. T1234')+'" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();onEpcorInput()"/><div class="field-warn" id="warnEpcor">EPCOR # is required</div></div>'
     +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--warn);font-size:10px">recommended</span></label><input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is missing — unit will be flagged incomplete</div></div>'
     +'<div class="form-group"><label class="form-label">Unit type</label><div class="seg" id="uTypeSeg">'+['Pedestal','Transformer'].map(function(t){var active=saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal');return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uTypeSeg\',this);onUnitTypeChange(this)">'+t+'</button>';}).join('')+'</div></div>'
     +'<div id="finsGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="toggle-row"><div><div class="toggle-label">Fins</div><div class="toggle-sub">Does this transformer have fins?</div></div><label class="toggle-switch"><input type="checkbox" id="uFins"'+(finsVal?' checked':'')+'/><div class="toggle-track"></div></label></div></div>'
@@ -494,7 +526,7 @@ function openUnitForm(u,saved){
     +'<div class="form-group"><label class="form-label">After photo</label><div class="photo-form-wrap'+(val('uEpcor')||u||saved?'':' blocked')+'" id="formPhoto_after">'+formPhotoSlotInner('after')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea id="uNotes" rows="2" placeholder="Optional notes…">'+(saved?esc(saved.notes||''):(u?esc(u.notes||''):''))+'</textarea></div>'
     +'<button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">'+(formState.mode==='edit'?'Save changes':'Add unit')+'</button>'
-    +(saved?'<button class="btn" style="width:100%;padding:11px;margin-top:8px" onclick="clearDraft();closeModal()">Discard draft</button>':'');
+    +(saved?'<button class="btn" style="width:100%;padding:11px;margin-top:8px" onclick="removeDraftAndClose()">Discard this draft</button>':'');
   openModal(html);
   if(saved)patchCount=saved.patches||0;
   // Show ASAP warning softly after a moment
@@ -573,7 +605,7 @@ function restoreFormIfNeeded(){
 // ── QUICK ADD ─────────────────────────────────────────────────────────────────
 function showQuickAddModal(){
   qaStatus=null;
-  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaClean" onclick="selQAStatus(\'Clean\',this)">Clean</div><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
+  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaClean" onclick="selQAStatus(\'Clean\',this)">Clean</div><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
   setTimeout(function(){var el=$('qaEpcor');if(el)el.focus();},150);
 }
 function selQAStatus(s,el){qaStatus=s;var cls={Clean:'sel-clean',Fail:'sel-fail',Vegetation:'sel-veg','No Access':'sel-na'};['qaClean','qaFail','qaVeg','qaNA'].forEach(function(id){var btn=$(id);if(btn)btn.className='qa-status-opt';});el.classList.add(cls[s]||'');checkQASubmit();}
@@ -676,7 +708,7 @@ function exportSupervisorPDF(){
   doc.setFontSize(9);doc.setTextColor(80);
   var statCols=[[us.length,'Total units'],[fails,'Fails'],[patches,'Patches'],[veg,'Vegetation'],[na,'No access'],[pct+'%','Clean rate']];
   var cw=(pw-28)/6;
-  statCols.forEach(function(s,i){doc.setFontSize(18);doc.setFont(undefined,'bold');doc.setTextColor(i===1&&fails>0?[180,30,30]:[21,128,61]);doc.text(String(s[0]),14+cw*i+cw/2,y+14,{align:'center'});doc.setFontSize(7);doc.setFont(undefined,'normal');doc.setTextColor(80);doc.text(s[1],14+cw*i+cw/2,y+24,{align:'center'});});
+  statCols.forEach(function(s,i){doc.setFontSize(18);doc.setFont(undefined,'bold');if(i===1&&fails>0){doc.setTextColor(180,30,30);}else{doc.setTextColor(21,128,61);}doc.text(String(s[0]),14+cw*i+cw/2,y+14,{align:'center'});doc.setFontSize(7);doc.setFont(undefined,'normal');doc.setTextColor(80);doc.text(s[1],14+cw*i+cw/2,y+24,{align:'center'});});
   doc.setTextColor(0);y+=40;
   if(map.notes){doc.setFontSize(9);doc.setTextColor(80);doc.text('Notes: '+map.notes,14,y);y+=7;doc.setTextColor(0);}
   // Fail breakdown
@@ -731,3 +763,10 @@ function closeModalOutside(e){
 
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 openIDB(function(){idbGet(function(){if(!restoreFormIfNeeded())showMaps();});});
+
+// ── EXTRAS ────────────────────────────────────────────────────────────────────
+function removeDraftAndClose(){
+  // called from form discard button — need to find the draft being edited
+  // since we removed it from the list when resuming, just close
+  clearDraft();closeModal();renderUnits();
+}
