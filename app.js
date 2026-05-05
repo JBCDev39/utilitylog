@@ -269,7 +269,21 @@ function calcGlobalStats(){
 // - MAPS -
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
-  $('topTitle').textContent='VAULT';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
+  $('topTitle').innerHTML='<div class="vault-logo">'
+    +'<svg width="32" height="34" viewBox="0 0 34 36" fill="none" xmlns="http://www.w3.org/2000/svg">'
+    +'<polyline points="3,4 3,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+    +'<polyline points="31,4 31,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+    +'<circle cx="3" cy="4" r="3.2" fill="#22c55e"/>'
+    +'<circle cx="31" cy="4" r="3.2" fill="#22c55e"/>'
+    +'<circle cx="17" cy="30" r="3.2" fill="#22c55e"/>'
+    +'<circle cx="3" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/>'
+    +'<circle cx="31" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/>'
+    +'<line x1="3" y1="4" x2="31" y2="4" stroke="#1a9e52" stroke-width="0.9" stroke-dasharray="2.5,2"/>'
+    +'</svg>'
+    +'<div class="vault-logo-wordmark">'
+    +'<span class="vault-logo-name">VAULT</span>'
+    +'<span class="vault-logo-sub">VISUAL ASSET LOG</span>'
+    +'</div></div>';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
@@ -305,7 +319,28 @@ function toggleMapStatus(e,mapId){
   m.status=m.status==='Completed'?'Active':'Completed';
   idbSave();renderMaps();
 }
-function addMapPhoto(mapId){var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';inp.onchange=function(){var file=inp.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){compressImage(e.target.result,1200,0.82,function(comp){var m=db.maps.find(function(x){return x.id===mapId;});m.photo=comp;idbSave();renderMaps();toast('Map photo saved');});};r.readAsDataURL(file);};inp.click();}
+function addMapPhoto(mapId){
+  openModal('<p class="modal-title">Map photo</p>'
+    +'<div style="display:flex;flex-direction:column;gap:10px;padding-bottom:6px">'
+    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="launchMapPhoto(\''+mapId+'\',true)">Take photo</button>'
+    +'<button class="btn" style="width:100%;padding:14px;font-size:15px" onclick="launchMapPhoto(\''+mapId+'\',false)">Choose from gallery</button>'
+    +'<button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Cancel</button>'
+    +'</div>');
+}
+function launchMapPhoto(mapId,cam){
+  closeModal();
+  var inp=document.createElement('input');inp.type='file';inp.accept='image/*';
+  if(cam)inp.capture='environment';
+  inp.onchange=function(){
+    var file=inp.files[0];if(!file)return;
+    var r=new FileReader();r.onload=function(e){
+      compressImage(e.target.result,1200,0.82,function(comp){
+        var m=db.maps.find(function(x){return x.id===mapId;});
+        m.photo=comp;idbSave();renderMaps();toast('Map photo saved');
+      });
+    };r.readAsDataURL(file);
+  };inp.click();
+}
 function viewMapPhoto(mapId){
   var m=db.maps.find(function(x){return x.id===mapId;});
   if(!m||!m.photo)return;

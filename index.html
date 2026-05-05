@@ -33,6 +33,10 @@
     /* TOP BAR */
     .top-bar{display:flex;align-items:center;gap:6px;padding:0 16px;padding-top:env(safe-area-inset-top);height:calc(52px + env(safe-area-inset-top));background:rgba(10,10,10,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid var(--border);flex-shrink:0;position:relative;z-index:20}
     .top-bar-title{font-size:17px;font-weight:600;flex:1;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    .vault-logo{display:flex;align-items:center;gap:9px;flex:1;min-width:0}
+    .vault-logo-wordmark{display:flex;flex-direction:column;gap:1px}
+    .vault-logo-name{font-size:18px;font-weight:700;letter-spacing:3px;color:#f2f2f0;line-height:1;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
+    .vault-logo-sub{font-size:7.5px;letter-spacing:1.8px;color:#606058;line-height:1;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:400}
     .back-btn{display:flex;align-items:center;gap:4px;background:none;border:none;color:var(--grn-text);font-size:15px;cursor:pointer;padding:6px 8px 6px 0;font-family:inherit;font-weight:500;white-space:nowrap;flex-shrink:0}
     .top-acts{display:flex;gap:6px;align-items:center;flex-shrink:0}
 
@@ -308,7 +312,7 @@
 <div id="app">
   <div class="top-bar">
     <span id="backWrap" style="display:none"><button class="back-btn" onclick="goBack()"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M7 1L1 6.5L7 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button></span>
-    <h1 class="top-bar-title" id="topTitle">UtilityLog</h1>
+    <div class="top-bar-title" id="topTitle">VAULT</div>
     <div class="top-acts" id="topActs"></div>
   </div>
   <div class="controls-row" id="controlsRow">
