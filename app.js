@@ -195,7 +195,6 @@ function downloadPhoto(dataUrl,filename){var a=document.createElement('a');a.hre
 function openPicker(type){
   var opts,title,current;
   if(type==='filter'){opts=['All units','Fail','Vegetation','No Access','Clean','Incomplete'];title='Filter';current=state.filter==='All'?'All units':state.filter;}
-  else if(type==='sort'){opts=['Sort: ASAP #','Sort: Status'];title='Sort by';current=state.sort==='asap'?'Sort: ASAP #':'Sort: Status';}
   else if(type==='failType'){opts=FAIL_TYPES;title='Fail type';current=formState.failTypeVal||FAIL_TYPES[0];}
   $('pickerTitle').textContent=title;
   $('pickerOptions').innerHTML=opts.map(function(o){
@@ -207,7 +206,6 @@ function openPicker(type){
 function selectPickerOption(type,v){
   closePicker();
   if(type==='filter'){state.filter=v==='All units'?'All':v;$('filterVal').textContent=v;renderUnits();}
-  else if(type==='sort'){state.sort=v==='Sort: ASAP #'?'asap':'status';$('sortVal').textContent=v;renderUnits();}
   else if(type==='failType'){formState.failTypeVal=v;var el=$('failTypeDisplay');if(el)el.textContent=v;}
 }
 function closePicker(){$('pickerOverlay').classList.remove('open');}
@@ -308,7 +306,7 @@ function showUnits(mapId,dir){
     +'<div class="dot-item" onclick="closeDotMenu();exportSupervisorPDF()">PDF — Supervisor</div>'
     +'<div class="dot-item" onclick="closeDotMenu();showIncompleteQueue()">Incomplete units</div>'
     +'</div></div>';
-  $('filterVal').textContent='All units';$('sortVal').textContent='Sort: ASAP #';$('searchInput').value='';
+  $('filterVal').textContent='All units';$('searchInput').value='';
   $('controlsRow').classList.add('visible');showFabMenu();renderUnits();setScreen('units',dir||'forward');
 }
 function renderUnits(){
@@ -645,6 +643,8 @@ function createMap(){
 
 // ── SUMMARY ───────────────────────────────────────────────────────────────────
 function showSummary(){
+  // Button tap feedback handled by .btn:active CSS
+  // Modal entrance handled by .modal-overlay.open .modal transition
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   var map=db.maps.find(function(m){return m.id===state.mapId;});
   var fails=us.filter(function(u){return u.status==='Fail';}).length;

@@ -41,7 +41,8 @@
     .dot-btn span{width:3px;height:3px;border-radius:50%;background:var(--text2);display:block}
     .dot-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:160px;z-index:150;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;display:none}
     .dot-dropdown.open{display:block;animation:fadeUp 0.15s var(--ease)}
-    .dot-item{padding:13px 16px;font-size:14px;cursor:pointer;transition:background 0.1s;border-bottom:0.5px solid var(--border);white-space:nowrap}
+    .dot-item{padding:13px 16px;font-size:14px;cursor:pointer;transition:background 0.1s,transform 0.08s;border-bottom:0.5px solid var(--border);white-space:nowrap}
+    .dot-item:active{transform:scale(0.97);background:var(--bg3)}
     .dot-item:last-child{border-bottom:none}
     .dot-item:active{background:var(--bg3)}
 
@@ -236,7 +237,7 @@
     /* MODAL */
     .modal-overlay{display:none;position:fixed;inset:0;z-index:100;align-items:flex-end;justify-content:center}
     .modal-overlay.open{display:flex;animation:bgFadeIn 0.2s var(--ease) forwards}
-    .modal{background:var(--bg1);border-radius:24px 24px 0 0;padding:0 20px max(20px,calc(env(safe-area-inset-bottom)+16px));width:100%;max-height:92dvh;overflow-y:auto;transform:translateY(100%);transition:transform 0.3s var(--ease)}
+    .modal{background:var(--bg1);border-radius:24px 24px 0 0;padding:0 20px max(20px,calc(env(safe-area-inset-bottom)+16px));width:100%;max-height:92dvh;overflow-y:auto;transform:translateY(100%);transition:transform 0.32s var(--spring)}
     .modal-overlay.open .modal{transform:translateY(0)}
     .modal-handle{width:36px;height:4px;background:var(--bg4);border-radius:2px;margin:12px auto 16px}
     .modal-title{font-size:18px;font-weight:700;margin-bottom:18px;letter-spacing:-0.3px}
@@ -312,10 +313,7 @@
         <span class="picker-trigger-val" id="filterVal">All units</span>
         <svg class="picker-chevron" width="12" height="7" viewBox="0 0 12 7" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
-      <button class="picker-trigger" onclick="openPicker('sort')">
-        <span class="picker-trigger-val" id="sortVal">Sort: ASAP #</span>
-        <svg class="picker-chevron" width="12" height="7" viewBox="0 0 12 7" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
+
     </div>
     <div class="search-wrap">
       <svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#606058" stroke-width="1.5"/><path d="M10 10L13 13" stroke="#606058" stroke-width="1.5" stroke-linecap="round"/></svg>
