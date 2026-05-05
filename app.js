@@ -846,6 +846,8 @@ function openModal(html){$('modalBox').innerHTML='<div class="modal-handle"></di
 function closeModal(){
   var overlay=$('overlay');
   var modal=overlay?overlay.querySelector('.modal'):null;
+  // Restore modal scroll in case zoom locked it
+  var mb=$('modalBox');if(mb){mb.style.overflowY='';mb.style.touchAction='';}
   if(modal){
     modal.style.transition='transform 0.25s var(--ease),opacity 0.2s var(--ease)';
     modal.style.transform='translateY(40px)';
@@ -879,6 +881,9 @@ function openZoomPhoto(src,title){
 }
 function setupZoom(){
   var wrap=$('zoomWrap');var img=$('zoomImg');if(!wrap||!img)return;
+  // Lock parent modal scroll so it doesn't steal touch events
+  var modal=$('modalBox');
+  if(modal){modal.style.overflowY='hidden';modal.style.touchAction='none';}
   var scale=1,lastScale=1,startDist=0,panX=0,panY=0,touching=false,panStartX=0,panStartY=0;
   var pinchOriginX=0,pinchOriginY=0,panXAtPinchStart=0,panYAtPinchStart=0;
   function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
