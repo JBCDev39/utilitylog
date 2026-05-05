@@ -362,12 +362,13 @@ function showDraftList(){
   html+=drafts.slice().reverse().map(function(d){
     var time=new Date(d.savedAt).toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});
     var dateStr=new Date(d.savedAt).toLocaleDateString('en-CA');
+    var did=d.id;
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:0.5px solid var(--border);gap:10px">'
-      +'<div style="cursor:pointer;flex:1" onclick="closeModal();resumeDraftById(''+d.id+'')">'
+      +'<div style="cursor:pointer;flex:1" onclick="closeModal();resumeDraftById(\"'+did+'\")">'
       +'<div style="font-family:monospace;font-size:14px;font-weight:600;color:var(--draft)">'+esc(d.epcor)+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+dateStr+' at '+time+(d.status?' · '+d.status:'')+'</div>'
       +'</div>'
-      +'<button class="btn btn-sm btn-danger" onclick="removeDraft(''+d.id+'');renderUnits();closeModal()">Discard</button>'
+      +'<button class="btn btn-sm btn-danger" onclick="removeDraft(\"'+did+'\");renderUnits();closeModal()">Discard</button>'
       +'</div>';
   }).join('');
   html+='<div style="display:flex;gap:8px;margin-top:16px">'
