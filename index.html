@@ -368,37 +368,40 @@
     <div id="screenTrash" class="screen"></div>
   </div>
 
-  <!-- FAB SYSTEM -->
-  <div class="fab-backdrop" id="fabBackdrop" onclick="closeFabMenu()"></div>
-  <div class="fab-root" id="fabRoot" style="display:none">
-    <div class="fab-menu" id="fabMenu">
-      <div class="fab-option" onclick="closeFabMenu();showQuickAddModal()">
-        <span class="fab-option-label">Quick Add</span>
-        <div class="fab-option-btn quick">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#f2f2f0" stroke-width="2" stroke-linecap="round"/><path d="M13 5l-2-2" stroke="#22c55e" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </div>
-      </div>
-      <div class="fab-option" onclick="closeFabMenu();showNewUnitModal()">
-        <span class="fab-option-label">Full Form</span>
-        <div class="fab-option-btn full">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
-        </div>
+  </div>
+</div>
+
+<div class="fab-backdrop" id="fabBackdrop" onclick="closeFabMenu()"></div>
+<div class="fab-root" id="fabRoot" style="display:none">
+  <div class="fab-menu" id="fabMenu">
+    <div class="fab-option" onclick="closeFabMenu();showQuickAddModal()">
+      <span class="fab-option-label">Quick Add</span>
+      <div class="fab-option-btn quick">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#f2f2f0" stroke-width="2" stroke-linecap="round"/></svg>
       </div>
     </div>
-    <button class="fab-main" id="fabMain" onclick="toggleFabMenu()">
-      <svg id="fabIcon" width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
-    </button>
+    <div class="fab-option" onclick="closeFabMenu();showNewUnitModal()">
+      <span class="fab-option-label">Full Form</span>
+      <div class="fab-option-btn full">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>
+      </div>
+    </div>
   </div>
-  <!-- Single-action FAB for maps screen -->
-  <button class="fab-main" id="fabSingle" style="position:fixed;bottom:max(24px,calc(env(safe-area-inset-bottom)+20px));right:18px;z-index:50;display:none" onclick="showNewMapModal()">
+  <button class="fab-main visible" id="fabMain" onclick="toggleFabMenu()">
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
   </button>
 </div>
+
+<button id="fabSingle" onclick="showNewMapModal()" style="position:fixed;bottom:28px;right:18px;z-index:99;display:none;width:50px;height:50px;border-radius:25px;border:none;background:#1a9e52;color:#fff;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(26,158,82,0.45);cursor:pointer;flex-shrink:0">
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+</button>
 
 <div class="modal-overlay" id="overlay" onclick="closeModalOutside(event)">
   <div class="modal" id="modalBox"><div class="modal-handle"></div></div>
 </div>
 <div class="toast" id="toast"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

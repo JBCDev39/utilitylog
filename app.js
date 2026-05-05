@@ -105,6 +105,7 @@ function daysLeft(d){return Math.max(0,30-Math.floor((Date.now()-d)/(864e5)));}
 function showFabMenu(){
   $('fabRoot').style.display='flex';
   $('fabSingle').style.display='none';
+  closeFabMenu();
 }
 function showFabSingle(){
   $('fabRoot').style.display='none';
@@ -1174,11 +1175,6 @@ function iconSVG(name,size){
 
 // ── SERVICE WORKER ────────────────────────────────────────────────────────────
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
-
-// ── PDF LIBS ──────────────────────────────────────────────────────────────────
-['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
- 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js'
-].forEach(function(src){var s=document.createElement('script');s.src=src;document.head.appendChild(s);});
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
 openIDB(function(){idbGet(function(){if(!restoreFormIfNeeded())showMaps();});});
