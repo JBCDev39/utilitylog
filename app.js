@@ -306,7 +306,21 @@ function toggleMapStatus(e,mapId){
   idbSave();renderMaps();
 }
 function addMapPhoto(mapId){var inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.capture='environment';inp.onchange=function(){var file=inp.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){compressImage(e.target.result,1200,0.82,function(comp){var m=db.maps.find(function(x){return x.id===mapId;});m.photo=comp;idbSave();renderMaps();toast('Map photo saved');});};r.readAsDataURL(file);};inp.click();}
-function viewMapPhoto(mapId){var m=db.maps.find(function(x){return x.id===mapId;});if(!m||!m.photo)return;openModal('<p class="modal-title">'+esc(m.name)+'</p><img class="modal-photo-full" src="'+m.photo+'" alt="Map"><div style="display:flex;gap:8px"><button class="btn btn-danger" style="flex:1" onclick="removeMapPhoto(\''+mapId+'\')">Remove</button><button class="btn" style="flex:1" onclick="closeModal()">Close</button></div>');}
+function viewMapPhoto(mapId){
+  var m=db.maps.find(function(x){return x.id===mapId;});
+  if(!m||!m.photo)return;
+  openModal(
+    '<p class="modal-title">'+esc(m.name)+'</p>'
+    +'<div id="zoomWrap" style="overflow:hidden;border-radius:var(--radius);background:var(--bg2);touch-action:none;position:relative;max-height:55vh;display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
+    +'<img id="zoomImg" src="'+m.photo+'" style="max-width:100%;max-height:55vh;object-fit:contain;transform-origin:center;display:block;user-select:none" draggable="false">'
+    +'</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-danger" style="flex:1" onclick="removeMapPhoto(\'+mapId+\')" >Remove</button>'
+    +'<button class="btn" style="flex:1" onclick="closeModal()">Close</button>'
+    +'</div>'
+  );
+  setTimeout(setupZoom, 80);
+}
 function removeMapPhoto(mapId){var m=db.maps.find(function(x){return x.id===mapId;});delete m.photo;idbSave();closeModal();renderMaps();toast('Photo removed');}
 function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});openModal('<p class="modal-title">Map notes</p><div class="form-group"><label class="form-label">Notes</label><textarea id="mNotesVal" rows="4" placeholder="Gate code, contact, access info…">'+esc(m.notes||'')+'</textarea></div><button class="btn btn-primary" style="width:100%;padding:13px" onclick="saveMapNotes(\''+mapId+'\')">Save</button>');setTimeout(function(){var el=$('mNotesVal');if(el)el.focus();},150);}
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
