@@ -1,6 +1,6 @@
 // - CONSTANTS -
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
-var STATUS_ORDER={Fail:0,Vegetation:1,'No Access':2,Clean:3};
+var STATUS_ORDER={Fail:0,'Door Fail':1,Vegetation:2,'No Access':3,Other:4};
 var FORM_KEY='ulf_form';
 var DRAFT_KEY='ulf_drafts'; // array of drafts per map
 
@@ -142,7 +142,13 @@ function val(id){var el=$(id);return el?el.value:'';}
 function activeInSeg(gid){var el=qs('#'+gid+' .active');return el?el.textContent:'';}
 function esc(s){if(!s)return '';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function segSel(gid,btn){document.querySelectorAll('#'+gid+' button').forEach(function(b){b.classList.remove('active');});btn.classList.add('active');}
-function statusBadge(s,inc){var m={Fail:'b-fail',Vegetation:'b-veg','No Access':'b-na',Clean:'b-clean'};return '<span class="badge '+(m[s]||'b-clean')+'">'+esc(s)+'</span>'+(inc?' <span class="badge b-incomplete">Incomplete</span>':'');}
+function statusBadge(s,inc,failType){
+  var m={Fail:'b-fail',Vegetation:'b-veg','No Access':'b-na',Other:'b-other'};
+  var isDoorFail=s==='Fail'&&failType==='Rust Holes (Door)';
+  var label=isDoorFail?'Door Fail':s;
+  var cls=isDoorFail?'b-door-fail':(m[s]||'b-other');
+  return '<span class="badge '+cls+'">'+label+'</span>'+(inc?' <span class="badge b-incomplete">Incomplete</span>':'');
+}
 function typeBadge(t){return t==='Pedestal'?'<span class="badge b-ped">Pedestal</span>':'<span class="badge b-trans">Transformer</span>';}
 function daysLeft(d){return Math.max(0,30-Math.floor((Date.now()-d)/(864e5)));}
 function fmtTs(ts){var d=new Date(ts);return d.toLocaleDateString('en-CA')+' '+d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});}
@@ -194,7 +200,7 @@ function downloadPhoto(dataUrl,filename){var a=document.createElement('a');a.hre
 // - PICKER -
 function openPicker(type){
   var opts,title,current;
-  if(type==='filter'){opts=['All units','Fail','Vegetation','No Access','Clean','Incomplete'];title='Filter';current=state.filter==='All'?'All units':state.filter;}
+  if(type==='filter'){opts=['All units','Fail','Door Fail','Vegetation','No Access','Other','Incomplete'];title='Filter';current=state.filter==='All'?'All units':state.filter;}
   else if(type==='failType'){opts=FAIL_TYPES;title='Fail type';current=formState.failTypeVal||FAIL_TYPES[0];}
   $('pickerTitle').textContent=title;
   $('pickerOptions').innerHTML=opts.map(function(o){
@@ -208,7 +214,19 @@ function selectPickerOption(type,v){
   if(type==='filter'){state.filter=v==='All units'?'All':v;$('filterVal').textContent=v;renderUnits();}
   else if(type==='failType'){formState.failTypeVal=v;var el=$('failTypeDisplay');if(el)el.textContent=v;}
 }
-function closePicker(){$('pickerOverlay').classList.remove('open');}
+function closePicker(){
+  var sheet=$('pickerOverlay')?$('pickerOverlay').querySelector('.picker-sheet'):null;
+  if(sheet){
+    sheet.style.transition='transform 0.22s var(--ease)';
+    sheet.style.transform='translateY(100%)';
+    setTimeout(function(){
+      $('pickerOverlay').classList.remove('open');
+      sheet.style.transition='';sheet.style.transform='';
+    },200);
+  } else {
+    if($('pickerOverlay'))$('pickerOverlay').classList.remove('open');
+  }
+}
 function closePickerOutside(e){if(e.target===$('pickerOverlay'))closePicker();}
 
 // - NAVIGATION -
@@ -314,6 +332,7 @@ function renderUnits(){
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   var hasDraft=hasDraftForMap(state.mapId);
   if(state.filter==='Incomplete'){us=us.filter(function(u){return isUnitIncomplete(u);});}
+  else if(state.filter==='Door Fail'){us=us.filter(function(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';});}
   else if(state.filter!=='All'){us=us.filter(function(u){return u.status===state.filter;});}
   if(q)us=us.filter(function(u){return (u.epcor||'').toLowerCase().includes(q)||(u.asap||'').toString().includes(q);});
   if(state.sort==='status'){us.sort(function(a,b){var ao=STATUS_ORDER[a.status]!==undefined?STATUS_ORDER[a.status]:9;var bo=STATUS_ORDER[b.status]!==undefined?STATUS_ORDER[b.status]:9;return ao!==bo?ao-bo:(a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});}
@@ -337,7 +356,7 @@ function renderUnits(){
     var photos=(u.beforePhoto?1:0)+(u.afterPhoto?1:0);
     var incomplete=isUnitIncomplete(u);
     return '<div class="card card-tap card-anim" style="animation-delay:'+(i*0.03)+'s" onclick="showUnit(\''+u.id+'\')">'
-      +'<div class="card-row"><span class="card-title" style="font-family:monospace;font-size:14px">'+esc(u.epcor)+'</span>'+statusBadge(u.status,incomplete)+'</div>'
+      +'<div class="card-row"><span class="card-title" style="font-family:monospace;font-size:14px">'+esc(u.epcor)+'</span>'+statusBadge(u.status,incomplete,u.failType)+'</div>'
       +'<div class="card-meta">'+(u.asap?'<span>ASAP #'+esc(u.asap)+'</span>':'')+(u.failType?'<span>'+esc(u.failType)+'</span>':'')+(u.patches?'<span>'+u.patches+' patch'+(u.patches>1?'es':'')+'</span>':'')+(photos?'<span class="grn">'+photos+' photo'+(photos>1?'s':'')+'</span>':'')+(u.lat?'<span>GPS</span>':'')+'</div></div>';
   }).join('');
 }
@@ -409,15 +428,8 @@ function showGallery(){
   if(afters.length){html+='<div class="gallery-section-title">After</div><div class="gallery-grid">';html+=afters.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'after\')"><img src="'+u.afterPhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+(u.status==='Fail'?' · Patched':'')+'</div></div>';}).join('');html+='</div>';}
   c.innerHTML=html;setScreen('gallery');
 }
-function galleryViewMapPhoto(){
-  var map=db.maps.find(function(m){return m.id===state.mapId;});
-  if(!map||!map.photo)return;
-  openModal('<p class="modal-title">'+esc(map.name)+'</p><img class="modal-photo-full" src="'+map.photo+'" alt="Map"><button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Close</button>');
-}
-function viewGalleryPhoto(unitId,key){
-  var u=db.units.find(function(x){return x.id===unitId;});var fname=photoFileName(u.epcor,u.status,key);
-  openModal('<p class="modal-title">'+esc(u.epcor)+' — '+(key==='before'?'Before':'After')+'</p><img src="'+u[key+'Photo']+'" style="width:100%;border-radius:var(--radius);margin-bottom:14px;max-height:55vh;object-fit:contain;background:var(--bg2)"><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="downloadPhoto(db.units.find(function(x){return x.id===\''+unitId+'\';})[\''+key+'Photo\'],\''+fname+'\');toast(\'Saved!\')">Save to device</button><button class="btn" style="flex:1" onclick="closeModal()">Close</button></div>');
-}
+function galleryViewMapPhoto(){var map=db.maps.find(function(m){return m.id===state.mapId;});if(!map||!map.photo)return;openZoomPhoto(map.photo,esc(map.name));}
+function viewGalleryPhoto(unitId,key){var u=db.units.find(function(x){return x.id===unitId;});openZoomPhoto(u[key+'Photo'],esc(u.epcor)+' — '+(key==='before'?'Before':'After'));}
 
 // - UNIT DETAIL -
 function showUnit(id){
@@ -530,7 +542,8 @@ function openUnitForm(u,saved){
     +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--warn);font-size:10px">recommended</span></label><input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is missing — unit will be flagged incomplete</div></div>'
     +'<div class="form-group"><label class="form-label">Unit type</label><div class="seg" id="uTypeSeg">'+['Pedestal','Transformer'].map(function(t){var active=saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal');return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uTypeSeg\',this);onUnitTypeChange(this)">'+t+'</button>';}).join('')+'</div></div>'
     +'<div id="finsGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="toggle-row"><div><div class="toggle-label">Fins</div><div class="toggle-sub">Does this transformer have fins?</div></div><label class="toggle-switch"><input type="checkbox" id="uFins"'+(finsVal?' checked':'')+'/><div class="toggle-track"></div></label></div></div>'
-    +'<div class="form-group"><label class="form-label">Status</label><div class="seg" id="uStatSeg">'+['Clean','Fail','Vegetation','No Access'].map(function(s){return '<button'+(s===status?' class="active"':'')+' onclick="segSel(\'uStatSeg\',this);chkFail()">'+s+'</button>';}).join('')+'</div></div>'
+    +'<div id="subtypeGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Transformer subtype</label><div class="seg" id="uSubtypeSeg">'+([ 'Transformer','Cabinet','Cubicle'].map(function(t){var sv=saved?saved.transSubtype:(u?u.transSubtype:null);var active=sv?sv===t:t==='Transformer';return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uSubtypeSeg\',this)">'+t+'</button>';}).join(''))+'</div></div></div>'
+    +'<div class="form-group"><label class="form-label">Status</label><div class="seg" id="uStatSeg">'+['Fail','Vegetation','No Access','Other'].map(function(s){return '<button'+(s===status?' class="active"':'')+' onclick="segSel(\'uStatSeg\',this);chkFail()">'+s+'</button>';}).join('')+'</div></div>'
     +'<div id="failFields" class="field-expand'+(isFail?' shown':' hidden')+'" style="max-height:'+(isFail?'200px':'0')+'">'
     +'<div class="form-group"><label class="form-label">Fail type</label><button class="form-picker" onclick="openPicker(\'failType\')"><span class="form-picker-val" id="failTypeDisplay">'+esc(failTypeVal)+'</span><span class="form-picker-chevron">'+chevSVG+'</span></button></div>'
     +'<div class="form-group"><label class="form-label">Patches</label><div class="patch-ctrl"><button class="patch-btn" onclick="adjP(-1)">−</button><span class="patch-val" id="pNum">'+(saved?saved.patches:(u?u.patches||0:0))+'</span><button class="patch-btn" onclick="adjP(1)">+</button></div></div></div>'
@@ -550,8 +563,19 @@ function openUnitForm(u,saved){
 }
 function onUnitTypeChange(btn){
   var isPed=btn.textContent==='Pedestal';var isTrans=btn.textContent==='Transformer';
-  var el=$('uEpcor');if(el)el.placeholder=isPed?'e.g. PED15828':'e.g. T1234';
+  var el=$('uEpcor');
+  if(el){
+    el.placeholder=isPed?'e.g. 15828':'e.g. T1234';
+    if(isPed&&!el.value){el.value='PED';el.setSelectionRange(3,3);}
+    else if(isTrans&&el.value==='PED'){el.value='';}
+  }
   var fg=$('finsGroup');if(fg){fg.style.maxHeight=isTrans?'80px':'0';fg.style.marginBottom=isTrans?'16px':'0';fg.classList.toggle('shown',isTrans);fg.classList.toggle('hidden',!isTrans);}
+  // Show/hide transformer subtype
+  var stg=$('subtypeGroup');
+  if(stg){stg.style.maxHeight=isTrans?'80px':'0';stg.style.marginBottom=isTrans?'16px':'0';stg.classList.toggle('shown',isTrans);stg.classList.toggle('hidden',!isTrans);}
+  // ASAP # field type
+  var asapEl=$('uAsap');
+  if(asapEl){asapEl.type=isTrans?'text':'number';}
 }
 function onEpcorInput(){
   var hasVal=val('uEpcor').trim().length>0;
@@ -581,7 +605,7 @@ function submitUnitForm(){
   if(formState.mode==='edit'){
     var u=db.units.find(function(x){return x.id===formState.unitId;});
     var prev={status:u.status,failType:u.failType,patches:u.patches,notes:u.notes,unitType:u.unitType,asap:u.asap,fins:u.fins,beforePhoto:u.beforePhoto,afterPhoto:u.afterPhoto};
-    u.epcor=epcor;u.asap=asap;u.unitType=activeInSeg('uTypeSeg');u.status=status;u.failType=isFail?failType:'';u.patches=isFail?patchCount:0;u.notes=val('uNotes').trim();u.fins=fins;u.incomplete=false;
+    u.epcor=epcor;u.asap=asap;u.unitType=activeInSeg('uTypeSeg');u.status=status;u.failType=isFail?failType:'';u.patches=isFail?patchCount:0;u.notes=val('uNotes').trim();u.fins=fins;u.incomplete=false;if(activeInSeg('uTypeSeg')==='Transformer')u.transSubtype=activeInSeg('uSubtypeSeg')||'Transformer';
     if(formGPS){u.lat=formGPS.lat;u.lng=formGPS.lng;}
     if(formPhotos.before)u.beforePhoto=formPhotos.before;else if(formPhotos.before===null)delete u.beforePhoto;
     if(formPhotos.after)u.afterPhoto=formPhotos.after;else if(formPhotos.after===null)delete u.afterPhoto;
@@ -621,7 +645,7 @@ function showQuickAddModal(){
   openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaClean" onclick="selQAStatus(\'Clean\',this)">Clean</div><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
   setTimeout(function(){var el=$('qaEpcor');if(el)el.focus();},150);
 }
-function selQAStatus(s,el){qaStatus=s;var cls={Clean:'sel-clean',Fail:'sel-fail',Vegetation:'sel-veg','No Access':'sel-na'};['qaClean','qaFail','qaVeg','qaNA'].forEach(function(id){var btn=$(id);if(btn)btn.className='qa-status-opt';});el.classList.add(cls[s]||'');checkQASubmit();}
+function selQAStatus(s,el){qaStatus=s;var cls={Other:'sel-other',Fail:'sel-fail',Vegetation:'sel-veg','No Access':'sel-na'};['qaFail','qaVeg','qaNA','qaOther'].forEach(function(id){var btn=$(id);if(btn)btn.className='qa-status-opt';});el.classList.add(cls[s]||'');checkQASubmit();}
 function checkQASubmit(){var btn=$('qaSubmitBtn');if(btn)btn.disabled=!(val('qaEpcor').trim()&&qaStatus);}
 function submitQuickAdd(){
   var epcor=val('qaEpcor').trim();if(!epcor||!qaStatus)return;
@@ -778,7 +802,23 @@ function importBackup(e){var file=e.target.files[0];if(!file)return;var r=new Fi
 
 // - MODAL -
 function openModal(html){$('modalBox').innerHTML='<div class="modal-handle"></div>'+html;$('overlay').classList.add('open');}
-function closeModal(){$('overlay').classList.remove('open');patchCount=0;formGPS=null;}
+function closeModal(){
+  var overlay=$('overlay');
+  var modal=overlay?overlay.querySelector('.modal'):null;
+  if(modal){
+    modal.style.transition='transform 0.25s var(--ease),opacity 0.2s var(--ease)';
+    modal.style.transform='translateY(40px)';
+    modal.style.opacity='0';
+    setTimeout(function(){
+      overlay.classList.remove('open');
+      modal.style.transition='';modal.style.transform='';modal.style.opacity='';
+      patchCount=0;formGPS=null;
+    },220);
+  } else {
+    if(overlay)overlay.classList.remove('open');
+    patchCount=0;formGPS=null;
+  }
+}
 function closeModalOutside(e){
   if(e.target===$('overlay')){
     // Save as draft if form was open
@@ -786,6 +826,41 @@ function closeModalOutside(e){
     if(epcor&&epcor.trim()&&formState.mode==='new'){saveDraft();}
     closeModal();
   }
+}
+
+
+function openZoomPhoto(src,title){
+  openModal('<p class="modal-title">'+title+'</p>'
+    +'<div id="zoomWrap" style="overflow:hidden;border-radius:var(--radius);background:var(--bg2);touch-action:none;position:relative;max-height:60vh;display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
+    +'<img id="zoomImg" src="'+src+'" style="max-width:100%;max-height:60vh;object-fit:contain;transform-origin:center;transition:transform 0.1s;display:block;user-select:none" draggable="false">'
+    +'</div>'
+    +'<button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Close</button>');
+  setTimeout(setupZoom,80);
+}
+function setupZoom(){
+  var wrap=$('zoomWrap');var img=$('zoomImg');if(!wrap||!img)return;
+  var scale=1,lastScale=1,startDist=0,originX=0,originY=0,panX=0,panY=0,lastPanX=0,lastPanY=0,touching=false,panStartX=0,panStartY=0;
+  function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
+  function mid(t){return {x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
+  function applyTransform(){img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')';}
+  wrap.addEventListener('touchstart',function(e){
+    if(e.touches.length===2){e.preventDefault();startDist=dist(e.touches);lastScale=scale;var m=mid(e.touches);var r=wrap.getBoundingClientRect();originX=m.x-r.left;originY=m.y-r.top;}
+    else if(e.touches.length===1&&scale>1){touching=true;panStartX=e.touches[0].clientX-panX;panStartY=e.touches[0].clientY-panY;}
+  },{passive:false});
+  wrap.addEventListener('touchmove',function(e){
+    e.preventDefault();
+    if(e.touches.length===2){var newDist=dist(e.touches);scale=Math.min(4,Math.max(1,lastScale*(newDist/startDist)));applyTransform();}
+    else if(e.touches.length===1&&touching){panX=e.touches[0].clientX-panStartX;panY=e.touches[0].clientY-panStartY;applyTransform();}
+  },{passive:false});
+  wrap.addEventListener('touchend',function(e){
+    touching=false;
+    if(scale<=1){scale=1;panX=0;panY=0;applyTransform();}
+  });
+  // Double-tap to reset
+  var lastTap=0;
+  wrap.addEventListener('touchend',function(e){
+    var now=Date.now();if(now-lastTap<300){scale=1;panX=0;panY=0;applyTransform();}lastTap=now;
+  });
 }
 
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
