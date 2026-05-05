@@ -144,6 +144,8 @@ function setTitle(text){
   if(!el)return;
   el.className='top-bar-title';
   el.textContent=text;
+  var bw=$('backWrap');
+  if(bw)bw.style.display='';
 }
 
 function qs(sel,ctx){return (ctx||document).querySelector(sel);}
@@ -276,21 +278,9 @@ function calcGlobalStats(){
 // - MAPS -
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
-  $('topTitle').className='top-bar-title';$('topTitle').innerHTML='<div class="vault-logo">'
-    +'<svg width="32" height="34" viewBox="0 0 34 36" fill="none" xmlns="http://www.w3.org/2000/svg">'
-    +'<polyline points="3,4 3,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
-    +'<polyline points="31,4 31,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
-    +'<circle cx="3" cy="4" r="3.2" fill="#22c55e"/>'
-    +'<circle cx="31" cy="4" r="3.2" fill="#22c55e"/>'
-    +'<circle cx="17" cy="30" r="3.2" fill="#22c55e"/>'
-    +'<circle cx="3" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/>'
-    +'<circle cx="31" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/>'
-    +'<line x1="3" y1="4" x2="31" y2="4" stroke="#1a9e52" stroke-width="0.9" stroke-dasharray="2.5,2"/>'
-    +'</svg>'
-    +'<div class="vault-logo-wordmark">'
-    +'<span class="vault-logo-name">VAULT</span>'
-    +'<span class="vault-logo-sub">VISUAL ASSET LOG</span>'
-    +'</div></div>';$('backWrap').style.visibility='hidden';$('controlsRow').classList.remove('visible');
+  $('topTitle').className='top-bar-logo';
+  $('topTitle').innerHTML='<svg width="32" height="34" viewBox="0 0 34 36" fill="none"><polyline points="3,4 3,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><polyline points="31,4 31,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="3" cy="4" r="3.2" fill="#22c55e"/><circle cx="31" cy="4" r="3.2" fill="#22c55e"/><circle cx="17" cy="30" r="3.2" fill="#22c55e"/><circle cx="3" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/><circle cx="31" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/><line x1="3" y1="4" x2="31" y2="4" stroke="#1a9e52" stroke-width="0.9" stroke-dasharray="2.5,2"/></svg><div class="vault-logo-wordmark"><span class="vault-logo-name">VAULT</span><span class="vault-logo-sub">VISUAL ASSET LOG</span></div>';
+  $('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
@@ -636,7 +626,8 @@ function onUnitTypeChange(btn){
   var el=$('uEpcor');
   if(el){
     el.placeholder=isPed?'e.g. 15828':'e.g. T1234';
-    if(isPed&&!el.value){el.value='PED';el.setSelectionRange(3,3);}
+    el.setAttribute('inputmode',isPed?'numeric':'text');
+    if(isPed&&(el.value===''||el.value==='PED')){el.value='PED';setTimeout(function(){el.setSelectionRange(3,3);},0);}
     else if(isTrans&&el.value==='PED'){el.value='';}
   }
   var fg=$('finsGroup');if(fg){fg.style.maxHeight=isTrans?'80px':'0';fg.style.marginBottom=isTrans?'16px':'0';fg.classList.toggle('shown',isTrans);fg.classList.toggle('hidden',!isTrans);}
@@ -648,7 +639,20 @@ function onUnitTypeChange(btn){
   if(asapEl){asapEl.type=isTrans?'text':'number';}
 }
 function onEpcorInput(){
-  var hasVal=val('uEpcor').trim().length>0;
+  var el=$('uEpcor');
+  if(el){
+    var isPed=activeInSeg('uTypeSeg')==='Pedestal';
+    if(isPed){
+      var v=el.value.toUpperCase();
+      var prefix='PED';
+      if(!v.startsWith(prefix))v=prefix+v.replace(/[^0-9]/g,'');
+      else v=prefix+v.slice(prefix.length).replace(/[^0-9]/g,'');
+      if(el.value!==v)el.value=v;
+    } else {
+      el.value=el.value.toUpperCase();
+    }
+  }
+  var hasVal=val('uEpcor').trim().length>0&&val('uEpcor')!=='PED';
   ['before','after'].forEach(function(key){var wrap=$('formPhoto_'+key);if(wrap)wrap.classList.toggle('blocked',!hasVal);});
   var hint=$('photoHint');if(hint)hint.style.display=hasVal?'none':'block';
   var warn=$('warnEpcor');if(warn)warn.classList.toggle('show',!hasVal);
