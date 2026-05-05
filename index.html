@@ -38,7 +38,7 @@
     .vault-logo-name{font-size:18px;font-weight:700;letter-spacing:3px;color:#f2f2f0;line-height:1;font-family:-apple-system,BlinkMacSystemFont,sans-serif}
     .vault-logo-sub{font-size:7.5px;letter-spacing:1.8px;color:#606058;line-height:1;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:400}
     .back-btn{display:flex;align-items:center;gap:4px;background:none;border:none;color:var(--grn-text);font-size:15px;cursor:pointer;padding:6px 8px 6px 0;font-family:inherit;font-weight:500;white-space:nowrap;flex-shrink:0;justify-self:start}
-    #backWrap{display:flex;align-items:center;justify-content:flex-start}
+    #backWrap{display:flex;align-items:center;justify-content:flex-start;min-width:70px}
     .top-acts{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex:1}
 
     /* THREE DOT MENU */
@@ -312,7 +312,7 @@
 <body>
 <div id="app">
   <div class="top-bar">
-    <div id="backWrap" style="display:none"><button class="back-btn" onclick="goBack()"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M7 1L1 6.5L7 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button></div>
+    <div id="backWrap" style="visibility:hidden"><button class="back-btn" onclick="goBack()"><svg width="8" height="13" viewBox="0 0 8 13" fill="none"><path d="M7 1L1 6.5L7 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button></div>
     <div class="top-bar-title" id="topTitle">VAULT</div>
     <div class="top-acts" id="topActs"></div>
   </div>
