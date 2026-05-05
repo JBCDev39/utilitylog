@@ -40,8 +40,8 @@
     .dot-menu-wrap{position:relative}
     .dot-btn{width:34px;height:34px;border-radius:var(--radius);border:0.5px solid var(--border2);background:var(--bg2);color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:2px;flex-direction:column}
     .dot-btn span{width:3px;height:3px;border-radius:50%;background:var(--text2);display:block}
-    .dot-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:160px;z-index:150;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;display:none}
-    .dot-dropdown.open{display:block;animation:fadeUp 0.15s var(--ease)}
+    .dot-dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:160px;z-index:150;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;opacity:0;visibility:hidden;transform:scale(0.95) translateY(-6px);transition:opacity 0.15s var(--ease),transform 0.15s var(--ease),visibility 0.15s}
+    .dot-dropdown.open{opacity:1;visibility:visible;transform:scale(1) translateY(0)}
     .dot-item{padding:13px 16px;font-size:14px;cursor:pointer;transition:background 0.1s,transform 0.08s;border-bottom:0.5px solid var(--border);white-space:nowrap}
     .dot-item:active{transform:scale(0.97);background:var(--bg3)}
     .dot-item:last-child{border-bottom:none}
