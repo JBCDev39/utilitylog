@@ -139,6 +139,13 @@ function checkDupe(mapId,epcor,asap,excludeId){
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function toast(msg,duration){var t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},duration||2400);}
 function $(id){return document.getElementById(id);}
+function setTitle(text){
+  var el=$('topTitle');
+  if(!el)return;
+  el.className='top-bar-title-center';
+  el.textContent=text;
+}
+
 function qs(sel,ctx){return (ctx||document).querySelector(sel);}
 function val(id){var el=$(id);return el?el.value:'';}
 function activeInSeg(gid){var el=qs('#'+gid+' .active');return el?el.textContent:'';}
@@ -269,7 +276,7 @@ function calcGlobalStats(){
 // - MAPS -
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
-  $('topTitle').innerHTML='<div class="vault-logo">'
+  $('topTitle').className='top-bar-title';$('topTitle').innerHTML='<div class="vault-logo">'
     +'<svg width="32" height="34" viewBox="0 0 34 36" fill="none" xmlns="http://www.w3.org/2000/svg">'
     +'<polyline points="3,4 3,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
     +'<polyline points="31,4 31,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
@@ -364,7 +371,7 @@ function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 function softDeleteMap(mapId,mapName){if(!confirm('Move "'+mapName+'" to trash?'))return;var map=db.maps.find(function(m){return m.id===mapId;});var units=db.units.filter(function(u){return u.mapId===mapId;});db.trash.push({map:map,units:units,deletedAt:Date.now()});db.maps=db.maps.filter(function(m){return m.id!==mapId;});db.units=db.units.filter(function(u){return u.mapId!==mapId;});idbSave();showMaps();toast('Moved to trash');}
 function purgeExpiredTrash(){var b=db.trash.length;db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});if(db.trash.length!==b)idbSave();}
 function showTrash(){
-  $('topTitle').textContent='Trash';$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
+  setTitle('Trash');$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
   var c=$('screenTrash');
   if(!db.trash.length){c.innerHTML='<div class="empty-state"><div class="empty-title">Trash is empty</div><div class="empty-sub">Deleted maps appear here for 30 days</div></div>';setScreen('trash');return;}
   c.innerHTML=db.trash.map(function(t,i){var days=daysLeft(t.deletedAt);return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s"><div class="card-row"><div><div class="card-title">'+esc(t.map.name)+'</div><div class="card-sub">'+esc(t.map.location)+'</div><div style="font-size:12px;color:var(--warn);margin-top:4px">'+days+' day'+(days!==1?'s':'')+' left</div></div>'+typeBadge(t.map.type||'Pedestal')+'</div><div class="map-acts"><button class="btn btn-sm" onclick="restoreMap('+i+')">Restore</button><button class="btn btn-sm btn-danger" onclick="permanentDeleteMap('+i+')">Delete forever</button></div></div>';}).join('');
@@ -377,7 +384,7 @@ function permanentDeleteMap(idx){if(!confirm('Permanently delete "'+db.trash[idx
 function showUnits(mapId,dir){
   state.mapId=mapId;state.filter='All';state.sort='asap';
   var map=db.maps.find(function(m){return m.id===mapId;});
-  $('topTitle').textContent=esc(map.name);$('backWrap').style.display='';
+  setTitle(esc(map.name));$('backWrap').style.display='';
   $('topActs').innerHTML=
     '<button class="btn btn-sm" onclick="showGallery()">Gallery</button>'
     +'<div class="dot-menu-wrap"><button class="dot-btn" id="dotBtn" onclick="toggleDotMenu()" aria-label="More options"><span></span><span></span><span></span></button>'
@@ -471,7 +478,7 @@ function discardDraft(){clearDraft();renderUnits();toast('Drafts discarded');}
 
 // - GALLERY -
 function showGallery(){
-  $('topTitle').textContent='Gallery';$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
+  setTitle('Gallery');$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
   var map=db.maps.find(function(m){return m.id===state.mapId;});
   var us=db.units.filter(function(u){return u.mapId===state.mapId&&(u.beforePhoto||u.afterPhoto);});
   var c=$('screenGallery');
@@ -497,7 +504,7 @@ function viewGalleryPhoto(unitId,key){var u=db.units.find(function(x){return x.i
 // - UNIT DETAIL -
 function showUnit(id){
   state.unitId=id;var u=db.units.find(function(x){return x.id===id;});
-  $('topTitle').textContent=u.epcor;$('backWrap').style.display='';$('controlsRow').classList.remove('visible');
+  setTitle(u.epcor);$('backWrap').style.display='';$('controlsRow').classList.remove('visible');
   $('topActs').innerHTML='<button class="btn btn-sm" onclick="exportUnitPDF(\''+id+'\')">PDF</button><button class="btn btn-sm" onclick="startEditUnit(\''+id+'\')">Edit</button>';
   hideFab();renderUnitDetail(u);setScreen('unit');
 }
@@ -673,7 +680,7 @@ function submitUnitForm(){
     if(formPhotos.before)u.beforePhoto=formPhotos.before;else if(formPhotos.before===null)delete u.beforePhoto;
     if(formPhotos.after)u.afterPhoto=formPhotos.after;else if(formPhotos.after===null)delete u.afterPhoto;
     recordHistory(u,prev);
-    idbSave();clearFormState();clearDraft();closeModal();$('topTitle').textContent=esc(u.epcor);renderUnitDetail(u);toast('Saved');
+    idbSave();clearFormState();clearDraft();closeModal();setTitle(esc(u.epcor));renderUnitDetail(u);toast('Saved');
   } else {
     var nu={id:uid(),mapId:state.mapId,epcor:epcor,asap:asap,unitType:activeInSeg('uTypeSeg'),status:status,failType:isFail?failType:'',patches:isFail?patchCount:0,notes:val('uNotes').trim(),fins:fins,createdAt:Date.now()};
     if(formGPS){nu.lat=formGPS.lat;nu.lng=formGPS.lng;}
