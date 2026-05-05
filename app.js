@@ -1,3 +1,5 @@
+function isDoorFail(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';}
+function isRealFail(u){return u.status==='Fail'&&u.failType!=='Rust Holes (Door)';}
 // - CONSTANTS -
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
 var STATUS_ORDER={Fail:0,'Door Fail':1,Vegetation:2,'No Access':3,Other:4};
@@ -150,6 +152,11 @@ function statusBadge(s,inc,failType){
   return '<span class="badge '+cls+'">'+label+'</span>'+(inc?' <span class="badge b-incomplete">Incomplete</span>':'');
 }
 function typeBadge(t){return t==='Pedestal'?'<span class="badge b-ped">Pedestal</span>':'<span class="badge b-trans">Transformer</span>';}
+function mapTypeBadge(t){
+  if(t==='Pedestal')return '<span class="badge b-ped" style="font-size:10px;padding:2px 7px">PED</span>';
+  if(t==='Transformer')return '<span class="badge b-trans" style="font-size:10px;padding:2px 7px">TRANS</span>';
+  return '<span class="badge" style="font-size:10px;padding:2px 7px;background:rgba(100,100,100,0.15);color:var(--text2)">MIXED</span>';
+}
 function daysLeft(d){return Math.max(0,30-Math.floor((Date.now()-d)/(864e5)));}
 function fmtTs(ts){var d=new Date(ts);return d.toLocaleDateString('en-CA')+' '+d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});}
 
@@ -175,7 +182,16 @@ function closeDotMenuOutside(e){
     document.removeEventListener('click',closeDotMenuOutside,true);
   }
 }
-function closeDotMenu(){dotMenuOpen=false;var dd=$('dotDropdown');if(dd)dd.classList.remove('open');document.removeEventListener('click',closeDotMenuOutside,true);}
+function closeDotMenu(){
+  dotMenuOpen=false;
+  var dd=$('dotDropdown');
+  if(dd&&dd.classList.contains('open')){
+    dd.style.transition='opacity 0.15s var(--ease),transform 0.15s var(--ease)';
+    dd.style.opacity='0';dd.style.transform='scale(0.95) translateY(-4px)';
+    setTimeout(function(){dd.classList.remove('open');dd.style.transition='';dd.style.opacity='';dd.style.transform='';},140);
+  }
+  document.removeEventListener('click',closeDotMenuOutside,true);
+}
 
 // - COMPRESSION -
 function compressImage(dataUrl,maxDim,quality,cb){
@@ -246,7 +262,8 @@ function goBack(){
 function calcGlobalStats(){
   return {
     totalMaps:db.maps.length,totalUnits:db.units.length,
-    totalFails:db.units.filter(function(u){return u.status==='Fail';}).length,
+    totalFails:db.units.filter(function(u){return isRealFail(u);}).length,
+    totalDoorFails:db.units.filter(function(u){return isDoorFail(u);}).length,
     totalPatches:db.units.reduce(function(a,u){return a+(u.patches||0);},0),
     totalVeg:db.units.filter(function(u){return u.status==='Vegetation';}).length,
     activeMaps:db.maps.filter(function(m){return m.status!=='Completed';}).length
@@ -268,7 +285,8 @@ function renderMaps(){
   if(!db.maps.length){c.innerHTML=banner+'<div class="empty-state"><div class="empty-title">No maps yet</div><div class="empty-sub">Tap + to create your first map</div></div>'+dataSection();return;}
   c.innerHTML=banner+db.maps.map(function(m,i){
     var us=db.units.filter(function(u){return u.mapId===m.id;});
-    var fails=us.filter(function(u){return u.status==='Fail';}).length;
+    var fails=us.filter(function(u){return isRealFail(u);}).length;
+    var doorFails=us.filter(function(u){return isDoorFail(u);}).length;
     var vegs=us.filter(function(u){return u.status==='Vegetation';}).length;
     var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
     var incomplete=us.filter(function(u){return isUnitIncomplete(u);}).length;
@@ -276,7 +294,7 @@ function renderMaps(){
     var isComplete=m.status==='Completed';
     var cam='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color:var(--text3)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
     var thumb=m.photo?'<img class="map-thumb" src="'+m.photo+'" onclick="viewMapPhoto(\''+m.id+'\')" alt="Map">':'<div class="map-thumb-ph">'+cam+'</div>';
-    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div><div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')"><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div><div class="card-sub">'+esc(m.location)+(date?' · '+date:'')+'</div>'+(m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':'')+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+(vegs?'<span class="grn">'+vegs+' veg</span>':'')+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+'</div><div class="map-acts"><button class="btn btn-sm" onclick="editMapNotes(\''+m.id+'\')">Notes</button><button class="btn btn-sm" onclick="addMapPhoto(\''+m.id+'\')">Photo</button><button class="btn btn-sm" onclick="softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')">Delete</button></div></div>';
+    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div><div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')"><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div><div class="card-sub">'+esc(m.location)+(date?' · '+date:'')+'</div>'+(m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':'')+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+(vegs?'<span class="grn">'+vegs+' veg</span>':'')+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+'</div><div class="map-acts"><button class="btn btn-sm" onclick="editMapNotes(\''+m.id+'\')">Notes</button><button class="btn btn-sm" onclick="addMapPhoto(\''+m.id+'\')">Photo</button><button class="btn btn-sm" onclick="softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')">Delete</button></div></div>';
   }).join('')+dataSection();
 }
 function dataSection(){return '<div class="section-lbl" style="margin-top:4px">Data</div><div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:8px"><button class="btn" onclick="exportBackup()">Export backup</button><button class="btn" onclick="$(\'importFile\').click()">Import backup</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/></div>';}
@@ -674,8 +692,18 @@ function pickNewMapPhoto(cam){var inp=document.createElement('input');inp.type='
 function renderNewMapPhotoEmpty(){var slot=$('newMapPhotoSlot');if(slot)slot.innerHTML='<div class="photo-form-empty" onclick="pickNewMapPhoto(false)"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg><span class="pfe-lbl">Tap to add</span></div><div class="photo-form-actions"><button onclick="pickNewMapPhoto(true)">Camera</button><button onclick="pickNewMapPhoto(false)">Gallery</button></div>';}
 function createMap(){
   var name=val('mName').trim();
+  var type=activeInSeg('mTypeSeg');
   if(!name){var w=$('warnMName');if(w)w.classList.add('show');toast('Map name is required');return;}
-  var m={id:uid(),name:name,location:val('mLoc').trim(),notes:val('mNotes').trim(),type:activeInSeg('mTypeSeg'),status:'Active',createdAt:Date.now()};
+  // Dupe check: same name AND same type
+  var dupe=db.maps.find(function(m){
+    return m.name.toLowerCase()===name.toLowerCase()&&m.type===type;
+  });
+  if(dupe){
+    toast('"'+name+'" ('+type+') already exists',3000);
+    var w=$('warnMName');if(w){w.textContent='"'+name+'" with type '+type+' already exists';w.classList.add('show');}
+    return;
+  }
+  var m={id:uid(),name:name,location:val('mLoc').trim(),notes:val('mNotes').trim(),type:type,status:'Active',createdAt:Date.now()};
   if(newMapPhoto)m.photo=newMapPhoto;newMapPhoto=null;db.maps.push(m);idbSave();closeModal();renderMaps();toast('Map created');
 }
 
@@ -683,14 +711,15 @@ function createMap(){
 function showSummary(){
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   var map=db.maps.find(function(m){return m.id===state.mapId;});
-  var fails=us.filter(function(u){return u.status==='Fail';}).length;
+  var fails=us.filter(function(u){return isRealFail(u);}).length;
+  var doorFails=us.filter(function(u){return isDoorFail(u);}).length;
   var veg=us.filter(function(u){return u.status==='Vegetation';}).length;
   var na=us.filter(function(u){return u.status==='No Access';}).length;
-  var clean=us.filter(function(u){return u.status==='Clean';}).length;
+  var clean=us.filter(function(u){return u.status==='Clean'||u.status==='Other';}).length;
   var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
   var incomplete=us.filter(function(u){return isUnitIncomplete(u);}).length;
-  function sm(n,l,red){return '<div class="sum-box"><div class="sum-num'+(red?' red':'')+'">'+n+'</div><div class="sum-lbl">'+l+'</div></div>';}
-  var html='<p class="modal-title">'+esc(map.name)+'</p><div class="sum-grid">'+sm(us.length,'Total')+sm(fails,'Fails',fails>0)+sm(patches,'Patches')+sm(veg,'Veg')+sm(na,'No access')+sm(clean,'Clean')+'</div>';
+  function sm(n,l,red,color){return '<div class="sum-box"><div class="sum-num'+(red?' red':'')+(color?' style="color:'+color+'"':'')+'">'+n+'</div><div class="sum-lbl">'+l+'</div></div>';}
+  var html='<p class="modal-title">'+esc(map.name)+'</p><div class="sum-grid">'+sm(us.length,'Total')+sm(fails,'Fails',fails>0)+sm(doorFails,'Door Fails',false,'#fb923c')+sm(patches,'Patches')+sm(veg,'Veg')+sm(na,'No access')+'</div>';
   if(incomplete)html+='<div style="background:var(--warn-bg);border:0.5px solid var(--warn-border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--warn)">'+incomplete+' unit'+(incomplete>1?'s':'')+' incomplete (missing status, ASAP #, or unit type)</div>';
   if(fails){html+='<div class="section-lbl">Fail breakdown</div><div style="font-size:14px;line-height:2.4">';FAIL_TYPES.forEach(function(f){var n=us.filter(function(u){return u.failType===f;}).length;if(n)html+=esc(f)+': <strong style="color:var(--grn-text)">'+n+'</strong><br>';});html+='</div>';}
   if(map.notes)html+='<div class="section-lbl">Map notes</div><div style="font-size:14px;color:var(--text2);line-height:1.6">'+esc(map.notes)+'</div>';
@@ -721,12 +750,13 @@ function exportPDF(){
   if(!us.length){toast('No units to export');return;}toast('Generating PDF…');
   var doc=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var date=new Date().toLocaleDateString('en-CA');var pw=doc.internal.pageSize.getWidth();
-  var fails=us.filter(function(u){return u.status==='Fail';}).length;
+  var fails=us.filter(function(u){return isRealFail(u);}).length;
+  var doorFails=us.filter(function(u){return isDoorFail(u);}).length;
   var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
   var veg=us.filter(function(u){return u.status==='Vegetation';}).length;
   doc.setFillColor(21,128,61);doc.rect(0,0,pw,32,'F');doc.setTextColor(255);doc.setFontSize(20);doc.setFont(undefined,'bold');doc.text(map.name,14,16);doc.setFontSize(9);doc.setFont(undefined,'normal');doc.text(map.location+'  ·  '+map.type+'  ·  '+date,14,24);doc.setTextColor(0);var y=40;
   if(map.notes){doc.setFontSize(9);doc.setTextColor(80);doc.text('Notes: '+map.notes,14,y);y+=6;doc.setTextColor(0);}
-  doc.setFontSize(10);doc.text('Total: '+us.length+'   Fails: '+fails+'   Patches: '+patches+'   Veg: '+veg,14,y);y+=6;
+  doc.setFontSize(10);doc.text('Total: '+us.length+'   Fails: '+fails+'   Door Fails: '+doorFails+'   Patches: '+patches+'   Veg: '+veg,14,y);y+=6;
   doc.autoTable({startY:y,head:[['EPCOR #','ASAP #','Type','Status','Fail type','Patches','Fins','Notes']],body:us.map(function(u){return [u.epcor||'',u.asap||'',u.unitType||'',u.status,u.failType||'—',u.patches||0,u.fins?'Yes':'',u.notes||''];}),styles:{fontSize:8,cellPadding:2.5,overflow:'linebreak'},headStyles:{fillColor:[21,128,61],textColor:255,fontStyle:'bold',fontSize:8},alternateRowStyles:{fillColor:[240,253,244]},columnStyles:{0:{fontStyle:'bold',cellWidth:24},1:{cellWidth:14,halign:'center'},2:{cellWidth:18},3:{cellWidth:16},4:{cellWidth:30},5:{cellWidth:12,halign:'center'},6:{cellWidth:10,halign:'center'},7:{cellWidth:'auto'}},didParseCell:function(d){if(d.section==='body'&&d.column.index===3){var s=d.cell.raw;if(s==='Fail')d.cell.styles.textColor=[180,30,30];else if(s==='Vegetation')d.cell.styles.textColor=[21,128,61];else if(s==='No Access')d.cell.styles.textColor=[100,100,100];}},margin:{left:14,right:14}});
   var wp=us.filter(function(u){return u.beforePhoto||u.afterPhoto;});
   if(wp.length){doc.addPage();doc.setFontSize(14);doc.setFont(undefined,'bold');doc.setTextColor(0);doc.text('Photos',14,20);var py=28;var imgW=(pw-14-14-6)/2;var imgH=imgW*0.65;wp.forEach(function(u){if(py+imgH+14>doc.internal.pageSize.getHeight()-14){doc.addPage();py=20;}doc.setFontSize(10);doc.setFont(undefined,'bold');doc.text(u.epcor+(u.asap?' · ASAP #'+u.asap:''),14,py);doc.setFont(undefined,'normal');py+=5;if(u.beforePhoto){try{doc.addImage(u.beforePhoto,'JPEG',14,py,imgW,imgH);}catch(e){}doc.setFontSize(8);doc.setTextColor(100);doc.text('Before',14,py+imgH+3);doc.setTextColor(0);}if(u.afterPhoto){var ax=14+(u.beforePhoto?imgW+6:0);try{doc.addImage(u.afterPhoto,'JPEG',ax,py,imgW,imgH);}catch(e){}doc.setFontSize(8);doc.setTextColor(100);doc.text('After',ax,py+imgH+3);doc.setTextColor(0);}py+=imgH+10;});}
@@ -741,13 +771,14 @@ function exportSupervisorPDF(){
   if(!us.length){toast('No units to export');return;}toast('Generating supervisor PDF…');
   var doc=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var date=new Date().toLocaleDateString('en-CA');var pw=doc.internal.pageSize.getWidth();
-  var fails=us.filter(function(u){return u.status==='Fail';}).length;
+  var fails=us.filter(function(u){return isRealFail(u);}).length;
+  var doorFails=us.filter(function(u){return isDoorFail(u);}).length;
   var veg=us.filter(function(u){return u.status==='Vegetation';}).length;
   var na=us.filter(function(u){return u.status==='No Access';}).length;
-  var clean=us.filter(function(u){return u.status==='Clean';}).length;
+  var clean=us.filter(function(u){return u.status==='Clean'||u.status==='Other';}).length;
   var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
   var incomplete=us.filter(function(u){return isUnitIncomplete(u);}).length;
-  var pct=us.length?Math.round(clean/us.length*100):0;
+  var pct=us.length?Math.round((clean+doorFails)/us.length*100):0;
   // Header
   doc.setFillColor(21,128,61);doc.rect(0,0,pw,36,'F');
   doc.setTextColor(255);doc.setFontSize(18);doc.setFont(undefined,'bold');doc.text(map.name+' — Supervisor Summary',14,14);
@@ -821,7 +852,6 @@ function closeModal(){
 }
 function closeModalOutside(e){
   if(e.target===$('overlay')){
-    // Save as draft if form was open
     var epcor=val('uEpcor');
     if(epcor&&epcor.trim()&&formState.mode==='new'){saveDraft();}
     closeModal();
@@ -839,27 +869,59 @@ function openZoomPhoto(src,title){
 }
 function setupZoom(){
   var wrap=$('zoomWrap');var img=$('zoomImg');if(!wrap||!img)return;
-  var scale=1,lastScale=1,startDist=0,originX=0,originY=0,panX=0,panY=0,lastPanX=0,lastPanY=0,touching=false,panStartX=0,panStartY=0;
+  var scale=1,lastScale=1,startDist=0,panX=0,panY=0,touching=false,panStartX=0,panStartY=0;
+  var pinchOriginX=0,pinchOriginY=0,panXAtPinchStart=0,panYAtPinchStart=0;
   function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);}
-  function mid(t){return {x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2};}
-  function applyTransform(){img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')';}
+  function clampPan(px,py,s){
+    var iw=img.naturalWidth||img.offsetWidth;var ih=img.naturalHeight||img.offsetHeight;
+    var ww=wrap.offsetWidth;var wh=wrap.offsetHeight;
+    var scaledW=iw*(ww/iw)*s;var scaledH=ih*(wh/ih)*s;
+    var maxX=Math.max(0,(scaledW-ww)/2);var maxY=Math.max(0,(scaledH-wh)/2);
+    return {x:Math.min(maxX,Math.max(-maxX,px)),y:Math.min(maxY,Math.max(-maxY,py))};
+  }
+  function applyTransform(){
+    img.style.transformOrigin='center center';
+    img.style.transform='translate('+panX+'px,'+panY+'px) scale('+scale+')';
+  }
   wrap.addEventListener('touchstart',function(e){
-    if(e.touches.length===2){e.preventDefault();startDist=dist(e.touches);lastScale=scale;var m=mid(e.touches);var r=wrap.getBoundingClientRect();originX=m.x-r.left;originY=m.y-r.top;}
-    else if(e.touches.length===1&&scale>1){touching=true;panStartX=e.touches[0].clientX-panX;panStartY=e.touches[0].clientY-panY;}
+    if(e.touches.length===2){
+      e.preventDefault();
+      startDist=dist(e.touches);lastScale=scale;
+      var r=wrap.getBoundingClientRect();
+      var mx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+      var my=(e.touches[0].clientY+e.touches[1].clientY)/2;
+      pinchOriginX=mx-r.left-r.width/2;
+      pinchOriginY=my-r.top-r.height/2;
+      panXAtPinchStart=panX;panYAtPinchStart=panY;
+    } else if(e.touches.length===1&&scale>1){
+      touching=true;panStartX=e.touches[0].clientX-panX;panStartY=e.touches[0].clientY-panY;
+    }
   },{passive:false});
   wrap.addEventListener('touchmove',function(e){
     e.preventDefault();
-    if(e.touches.length===2){var newDist=dist(e.touches);scale=Math.min(4,Math.max(1,lastScale*(newDist/startDist)));applyTransform();}
-    else if(e.touches.length===1&&touching){panX=e.touches[0].clientX-panStartX;panY=e.touches[0].clientY-panStartY;applyTransform();}
+    if(e.touches.length===2){
+      var newDist=dist(e.touches);
+      var newScale=Math.min(4,Math.max(1,lastScale*(newDist/startDist)));
+      var scaleRatio=newScale/lastScale;
+      panX=panXAtPinchStart+(pinchOriginX*(1-scaleRatio));
+      panY=panYAtPinchStart+(pinchOriginY*(1-scaleRatio));
+      scale=newScale;
+      var clamped=clampPan(panX,panY,scale);panX=clamped.x;panY=clamped.y;
+      applyTransform();
+    } else if(e.touches.length===1&&touching){
+      panX=e.touches[0].clientX-panStartX;
+      panY=e.touches[0].clientY-panStartY;
+      var clamped=clampPan(panX,panY,scale);panX=clamped.x;panY=clamped.y;
+      applyTransform();
+    }
   },{passive:false});
   wrap.addEventListener('touchend',function(e){
     touching=false;
     if(scale<=1){scale=1;panX=0;panY=0;applyTransform();}
   });
-  // Double-tap to reset
   var lastTap=0;
-  wrap.addEventListener('touchend',function(e){
-    var now=Date.now();if(now-lastTap<300){scale=1;panX=0;panY=0;applyTransform();}lastTap=now;
+  wrap.addEventListener('touchend',function(){
+    var now=Date.now();if(now-lastTap<300){scale=1;panX=0;panY=0;img.style.transition='transform 0.2s var(--ease)';applyTransform();setTimeout(function(){img.style.transition='';},250);}lastTap=now;
   });
 }
 
