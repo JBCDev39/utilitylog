@@ -290,7 +290,7 @@ function showMaps(dir){
     +'<div class="vault-logo-wordmark">'
     +'<span class="vault-logo-name">VAULT</span>'
     +'<span class="vault-logo-sub">VISUAL ASSET LOG</span>'
-    +'</div></div>';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
+    +'</div></div>';$('backWrap').style.display='none';$('backWrap').style.visibility='';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
