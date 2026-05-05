@@ -290,7 +290,7 @@ function showMaps(dir){
     +'<div class="vault-logo-wordmark">'
     +'<span class="vault-logo-name">VAULT</span>'
     +'<span class="vault-logo-sub">VISUAL ASSET LOG</span>'
-    +'</div></div>';$('backWrap').style.visibility='hidden';$('backWrap').style.flex='0';$('controlsRow').classList.remove('visible');
+    +'</div></div>';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
@@ -371,7 +371,7 @@ function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 function softDeleteMap(mapId,mapName){if(!confirm('Move "'+mapName+'" to trash?'))return;var map=db.maps.find(function(m){return m.id===mapId;});var units=db.units.filter(function(u){return u.mapId===mapId;});db.trash.push({map:map,units:units,deletedAt:Date.now()});db.maps=db.maps.filter(function(m){return m.id!==mapId;});db.units=db.units.filter(function(u){return u.mapId!==mapId;});idbSave();showMaps();toast('Moved to trash');}
 function purgeExpiredTrash(){var b=db.trash.length;db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});if(db.trash.length!==b)idbSave();}
 function showTrash(){
-  setTitle('Trash');$('backWrap').style.visibility='visible';$('backWrap').style.flex='1';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
+  setTitle('Trash');$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
   var c=$('screenTrash');
   if(!db.trash.length){c.innerHTML='<div class="empty-state"><div class="empty-title">Trash is empty</div><div class="empty-sub">Deleted maps appear here for 30 days</div></div>';setScreen('trash');return;}
   c.innerHTML=db.trash.map(function(t,i){var days=daysLeft(t.deletedAt);return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s"><div class="card-row"><div><div class="card-title">'+esc(t.map.name)+'</div><div class="card-sub">'+esc(t.map.location)+'</div><div style="font-size:12px;color:var(--warn);margin-top:4px">'+days+' day'+(days!==1?'s':'')+' left</div></div>'+typeBadge(t.map.type||'Pedestal')+'</div><div class="map-acts"><button class="btn btn-sm" onclick="restoreMap('+i+')">Restore</button><button class="btn btn-sm btn-danger" onclick="permanentDeleteMap('+i+')">Delete forever</button></div></div>';}).join('');
