@@ -1,10 +1,10 @@
-// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+// - CONSTANTS -
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
 var STATUS_ORDER={Fail:0,Vegetation:1,'No Access':2,Clean:3};
 var FORM_KEY='ulf_form';
 var DRAFT_KEY='ulf_drafts'; // array of drafts per map
 
-// ── STATE ─────────────────────────────────────────────────────────────────────
+// - STATE -
 var DB_NAME='utilityInspect',DB_VER=1,STORE='data';
 var idb=null;
 var db={maps:[],units:[],trash:[]};
@@ -19,7 +19,7 @@ var qaStatus=null;
 var dotMenuOpen=false;
 var annState={unitId:null,key:null,textX:20,textY:20,fontSize:14,dragging:false,startX:0,startY:0};
 
-// ── IDB ───────────────────────────────────────────────────────────────────────
+// - IDB -
 function openIDB(cb){
   var req=indexedDB.open(DB_NAME,DB_VER);
   req.onupgradeneeded=function(e){if(!e.target.result.objectStoreNames.contains(STORE))e.target.result.createObjectStore(STORE);};
@@ -35,7 +35,7 @@ function idbGet(cb){
 }
 function idbSave(){if(!idb)return;idb.transaction(STORE,'readwrite').objectStore(STORE).put(db,'db');}
 
-// ── FORM PERSISTENCE (camera fix) ────────────────────────────────────────────
+// - FORM PERSISTENCE (camera fix) -
 function saveFormState(){
   try{
     sessionStorage.setItem(FORM_KEY,JSON.stringify({
@@ -66,7 +66,7 @@ function restoreFormIfNeeded(){
   }catch(e){return false;}
 }
 
-// ── DRAFT (form abandoned without saving) ────────────────────────────────────
+// - DRAFT (form abandoned without saving) -
 function getAllDrafts(){try{var r=sessionStorage.getItem(DRAFT_KEY);return r?JSON.parse(r):[];}catch(e){return [];}}
 function getDraftsForMap(mapId){return getAllDrafts().filter(function(d){return d.mapId===mapId;});}
 function saveDraft(){
@@ -89,7 +89,7 @@ function removeDraft(draftId){try{var drafts=getAllDrafts().filter(function(d){r
 function clearDraft(){try{var drafts=getAllDrafts().filter(function(d){return d.mapId!==state.mapId;});sessionStorage.setItem(DRAFT_KEY,JSON.stringify(drafts));}catch(e){}}
 function hasDraftForMap(mapId){return getDraftsForMap(mapId).length>0;}
 
-// ── UNIT HISTORY ──────────────────────────────────────────────────────────────
+// - UNIT HISTORY -
 function recordHistory(u,prevSnapshot){
   if(!u.history)u.history=[];
   var changes=[];
@@ -115,7 +115,7 @@ function recordHistory(u,prevSnapshot){
   if(u.history.length>50)u.history=u.history.slice(-50);
 }
 
-// ── UNIT VALIDATION ───────────────────────────────────────────────────────────
+// - UNIT VALIDATION -
 function getUnitIssues(u){
   var issues=[];
   if(!u.status||u.status==='')issues.push('Missing status');
@@ -125,7 +125,7 @@ function getUnitIssues(u){
 }
 function isUnitIncomplete(u){return getUnitIssues(u).length>0;}
 
-// ── DUPE DETECTION ────────────────────────────────────────────────────────────
+// - DUPE DETECTION -
 function checkDupe(mapId,epcor,asap,excludeId){
   var mapUnits=db.units.filter(function(u){return u.mapId===mapId&&u.id!==excludeId;});
   var dupeEpcor=epcor&&mapUnits.some(function(u){return (u.epcor||'').toUpperCase()===(epcor||'').toUpperCase();});
@@ -133,7 +133,7 @@ function checkDupe(mapId,epcor,asap,excludeId){
   return {epcor:dupeEpcor,asap:dupeAsap};
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────────────────
+// - UTILS -
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function toast(msg,duration){var t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},duration||2400);}
 function $(id){return document.getElementById(id);}
@@ -147,14 +147,14 @@ function typeBadge(t){return t==='Pedestal'?'<span class="badge b-ped">Pedestal<
 function daysLeft(d){return Math.max(0,30-Math.floor((Date.now()-d)/(864e5)));}
 function fmtTs(ts){var d=new Date(ts);return d.toLocaleDateString('en-CA')+' '+d.toLocaleTimeString('en-CA',{hour:'2-digit',minute:'2-digit'});}
 
-// ── FAB ───────────────────────────────────────────────────────────────────────
+// - FAB -
 function showFabMenu(){$('fabRoot').classList.add('show');$('fabSingle').style.display='none';closeFabMenu();}
 function showFabSingle(){$('fabRoot').classList.remove('show');$('fabSingle').style.display='flex';}
 function hideFab(){$('fabRoot').classList.remove('show');$('fabSingle').style.display='none';closeFabMenu();}
 function toggleFabMenu(){fabOpen=!fabOpen;$('fabMenu').classList.toggle('open',fabOpen);$('fabMain').classList.toggle('open',fabOpen);$('fabBackdrop').classList.toggle('open',fabOpen);}
 function closeFabMenu(){fabOpen=false;$('fabMenu').classList.remove('open');$('fabMain').classList.remove('open');$('fabBackdrop').classList.remove('open');}
 
-// ── DOT MENU ──────────────────────────────────────────────────────────────────
+// - DOT MENU -
 function toggleDotMenu(){
   dotMenuOpen=!dotMenuOpen;
   var dd=$('dotDropdown');if(dd)dd.classList.toggle('open',dotMenuOpen);
@@ -171,7 +171,7 @@ function closeDotMenuOutside(e){
 }
 function closeDotMenu(){dotMenuOpen=false;var dd=$('dotDropdown');if(dd)dd.classList.remove('open');document.removeEventListener('click',closeDotMenuOutside,true);}
 
-// ── COMPRESSION ───────────────────────────────────────────────────────────────
+// - COMPRESSION -
 function compressImage(dataUrl,maxDim,quality,cb){
   var img=new Image();
   img.onload=function(){
@@ -181,7 +181,7 @@ function compressImage(dataUrl,maxDim,quality,cb){
   };img.src=dataUrl;
 }
 
-// ── PHOTO NAMING ──────────────────────────────────────────────────────────────
+// - PHOTO NAMING -
 function photoFileName(epcor,status,slot){
   var e=(epcor||'UNIT').replace(/\s+/g,'_').toUpperCase();
   var s=status==='Fail'?'FAIL':status==='Vegetation'?'VEG':status==='No Access'?'NO_ACCESS':'CLEAN';
@@ -191,7 +191,7 @@ function photoFileName(epcor,status,slot){
 }
 function downloadPhoto(dataUrl,filename){var a=document.createElement('a');a.href=dataUrl;a.download=filename+'.jpg';a.click();}
 
-// ── PICKER ────────────────────────────────────────────────────────────────────
+// - PICKER -
 function openPicker(type){
   var opts,title,current;
   if(type==='filter'){opts=['All units','Fail','Vegetation','No Access','Clean','Incomplete'];title='Filter';current=state.filter==='All'?'All units':state.filter;}
@@ -211,7 +211,7 @@ function selectPickerOption(type,v){
 function closePicker(){$('pickerOverlay').classList.remove('open');}
 function closePickerOutside(e){if(e.target===$('pickerOverlay'))closePicker();}
 
-// ── NAVIGATION ────────────────────────────────────────────────────────────────
+// - NAVIGATION -
 function setScreen(name,dir){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active','anim-in','anim-back','anim-fade');});
   var el=$('screen'+name.charAt(0).toUpperCase()+name.slice(1));
@@ -224,7 +224,7 @@ function goBack(){
   else showMaps('back');
 }
 
-// ── GLOBAL STATS ──────────────────────────────────────────────────────────────
+// - GLOBAL STATS -
 function calcGlobalStats(){
   return {
     totalMaps:db.maps.length,totalUnits:db.units.length,
@@ -235,10 +235,10 @@ function calcGlobalStats(){
   };
 }
 
-// ── MAPS ──────────────────────────────────────────────────────────────────────
+// - MAPS -
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
-  $('topTitle').textContent='UtilityLog';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
+  $('topTitle').textContent='VAULT';$('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
@@ -279,7 +279,7 @@ function removeMapPhoto(mapId){var m=db.maps.find(function(x){return x.id===mapI
 function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});openModal('<p class="modal-title">Map notes</p><div class="form-group"><label class="form-label">Notes</label><textarea id="mNotesVal" rows="4" placeholder="Gate code, contact, access info…">'+esc(m.notes||'')+'</textarea></div><button class="btn btn-primary" style="width:100%;padding:13px" onclick="saveMapNotes(\''+mapId+'\')">Save</button>');setTimeout(function(){var el=$('mNotesVal');if(el)el.focus();},150);}
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
 
-// ── TRASH ─────────────────────────────────────────────────────────────────────
+// - TRASH -
 function softDeleteMap(mapId,mapName){if(!confirm('Move "'+mapName+'" to trash?'))return;var map=db.maps.find(function(m){return m.id===mapId;});var units=db.units.filter(function(u){return u.mapId===mapId;});db.trash.push({map:map,units:units,deletedAt:Date.now()});db.maps=db.maps.filter(function(m){return m.id!==mapId;});db.units=db.units.filter(function(u){return u.mapId!==mapId;});idbSave();showMaps();toast('Moved to trash');}
 function purgeExpiredTrash(){var b=db.trash.length;db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});if(db.trash.length!==b)idbSave();}
 function showTrash(){
@@ -292,7 +292,7 @@ function showTrash(){
 function restoreMap(idx){var t=db.trash[idx];db.maps.push(t.map);(t.units||[]).forEach(function(u){db.units.push(u);});db.trash.splice(idx,1);idbSave();showMaps();toast('Map restored');}
 function permanentDeleteMap(idx){if(!confirm('Permanently delete "'+db.trash[idx].map.name+'"?'))return;db.trash.splice(idx,1);idbSave();showTrash();toast('Permanently deleted');}
 
-// ── UNITS ─────────────────────────────────────────────────────────────────────
+// - UNITS -
 function showUnits(mapId,dir){
   state.mapId=mapId;state.filter='All';state.sort='asap';
   var map=db.maps.find(function(m){return m.id===mapId;});
@@ -351,7 +351,7 @@ function showIncompleteQueue(){
   openModal(html);
 }
 
-// ── DRAFT ─────────────────────────────────────────────────────────────────────
+// - DRAFT -
 function showDraftList(){
   var drafts=getDraftsForMap(state.mapId);
   if(!drafts.length)return;
@@ -387,25 +387,39 @@ function resumeDraftById(draftId){
 }
 function discardDraft(){clearDraft();renderUnits();toast('Drafts discarded');}
 
-// ── GALLERY ───────────────────────────────────────────────────────────────────
+// - GALLERY -
 function showGallery(){
   $('topTitle').textContent='Gallery';$('backWrap').style.display='';$('topActs').innerHTML='';$('controlsRow').classList.remove('visible');hideFab();
+  var map=db.maps.find(function(m){return m.id===state.mapId;});
   var us=db.units.filter(function(u){return u.mapId===state.mapId&&(u.beforePhoto||u.afterPhoto);});
   var c=$('screenGallery');
-  if(!us.length){c.innerHTML='<div class="empty-state"><div class="empty-title">No photos yet</div><div class="empty-sub">Add photos to units to see them here</div></div>';setScreen('gallery');return;}
+  var hasMapPhoto=map&&map.photo;
+  if(!us.length&&!hasMapPhoto){c.innerHTML='<div class="empty-state"><div class="empty-title">No photos yet</div><div class="empty-sub">Add photos to units to see them here</div></div>';setScreen('gallery');return;}
+  var html='';
+  if(hasMapPhoto){
+    html+='<div class="gallery-section-title">Map reference</div>'
+      +'<div style="position:relative;border-radius:var(--radius);overflow:hidden;cursor:pointer;margin-bottom:8px;background:var(--bg2);aspect-ratio:16/9" onclick="galleryViewMapPhoto()">'
+      +'<img src="'+map.photo+'" style="width:100%;height:100%;object-fit:cover;display:block;position:absolute;inset:0" alt="'+esc(map.name)+'">'
+      +'<div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.75));font-size:12px;font-weight:600;color:#fff">'+esc(map.name)+(map.location?' · '+esc(map.location):'')+'</div>'
+      +'</div>';
+  }
   var befores=us.filter(function(u){return u.beforePhoto;});
   var afters=us.filter(function(u){return u.afterPhoto;});
-  var html='';
   if(befores.length){html+='<div class="gallery-section-title">Before</div><div class="gallery-grid">';html+=befores.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'before\')"><img src="'+u.beforePhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+'</div></div>';}).join('');html+='</div>';}
   if(afters.length){html+='<div class="gallery-section-title">After</div><div class="gallery-grid">';html+=afters.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'after\')"><img src="'+u.afterPhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+(u.status==='Fail'?' · Patched':'')+'</div></div>';}).join('');html+='</div>';}
   c.innerHTML=html;setScreen('gallery');
+}
+function galleryViewMapPhoto(){
+  var map=db.maps.find(function(m){return m.id===state.mapId;});
+  if(!map||!map.photo)return;
+  openModal('<p class="modal-title">'+esc(map.name)+'</p><img class="modal-photo-full" src="'+map.photo+'" alt="Map"><button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Close</button>');
 }
 function viewGalleryPhoto(unitId,key){
   var u=db.units.find(function(x){return x.id===unitId;});var fname=photoFileName(u.epcor,u.status,key);
   openModal('<p class="modal-title">'+esc(u.epcor)+' — '+(key==='before'?'Before':'After')+'</p><img src="'+u[key+'Photo']+'" style="width:100%;border-radius:var(--radius);margin-bottom:14px;max-height:55vh;object-fit:contain;background:var(--bg2)"><div style="display:flex;gap:8px"><button class="btn" style="flex:1" onclick="downloadPhoto(db.units.find(function(x){return x.id===\''+unitId+'\';})[\''+key+'Photo\'],\''+fname+'\');toast(\'Saved!\')">Save to device</button><button class="btn" style="flex:1" onclick="closeModal()">Close</button></div>');
 }
 
-// ── UNIT DETAIL ───────────────────────────────────────────────────────────────
+// - UNIT DETAIL -
 function showUnit(id){
   state.unitId=id;var u=db.units.find(function(x){return x.id===id;});
   $('topTitle').textContent=u.epcor;$('backWrap').style.display='';$('controlsRow').classList.remove('visible');
@@ -468,7 +482,7 @@ function removeDetailPhoto(unitId,key){
 }
 function deleteUnit(id){if(!confirm('Delete this unit?'))return;db.units=db.units.filter(function(u){return u.id!==id;});idbSave();goBack();toast('Unit deleted');}
 
-// ── ANNOTATION ────────────────────────────────────────────────────────────────
+// - ANNOTATION -
 function showAnnotationModal(dataUrl,unitId,key){
   closeModal();var u=db.units.find(function(x){return x.id===unitId;});var defaultText=u?u.epcor:'';
   annState={unitId:unitId,key:key,textX:20,textY:20,fontSize:14,dragging:false,startX:0,startY:0};
@@ -497,10 +511,10 @@ function applyAnnotation(unitId,key){
 }
 function roundRect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();}
 
-// ── GPS ───────────────────────────────────────────────────────────────────────
+// - GPS -
 function stampGPSForm(){if(!navigator.geolocation){toast('GPS not available');return;}toast('Getting location…');navigator.geolocation.getCurrentPosition(function(pos){formGPS={lat:pos.coords.latitude,lng:pos.coords.longitude};var lbl=$('gpsFormLabel');if(lbl)lbl.textContent='Lat '+formGPS.lat.toFixed(5)+' · Lon '+formGPS.lng.toFixed(5);toast('Location stamped');},function(){toast('Could not get location');},{enableHighAccuracy:true,timeout:10000});}
 
-// ── UNIT FORM ─────────────────────────────────────────────────────────────────
+// - UNIT FORM -
 function showNewUnitModal(){patchCount=0;formPhotos={before:null,after:null};formGPS=null;formState={mode:'new',unitId:null,pendingPhotoKey:null,failTypeVal:FAIL_TYPES[0]};openUnitForm(null,null);}
 function startEditUnit(id){var u=db.units.find(function(x){return x.id===id;});patchCount=u.patches||0;formPhotos={before:u.beforePhoto||null,after:u.afterPhoto||null};formGPS=u.lat?{lat:u.lat,lng:u.lng}:null;formState={mode:'edit',unitId:id,pendingPhotoKey:null,failTypeVal:u.failType||FAIL_TYPES[0]};openUnitForm(u,null);}
 
@@ -583,7 +597,7 @@ function submitUnitForm(){
   }
 }
 
-// ── FORM PHOTOS ───────────────────────────────────────────────────────────────
+// - FORM PHOTOS -
 function formPhotoSlotInner(key){
   var camSVG='<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
   if(formPhotos[key])return '<img class="photo-form-preview" src="'+formPhotos[key]+'" alt="photo"><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Retake</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button><button onclick="formRemovePhoto(\''+key+'\')">Remove</button></div>';
@@ -601,7 +615,7 @@ function restoreFormIfNeeded(){
   try{var raw=sessionStorage.getItem(FORM_KEY);if(!raw)return false;var fs=JSON.parse(raw);if(!fs.photoKey)return false;clearFormState();state.mapId=fs.mapId;formPhotos={before:fs.beforePhoto||null,after:fs.afterPhoto||null};patchCount=fs.patches||0;formState={mode:fs.mode,unitId:fs.unitId||null,pendingPhotoKey:null,failTypeVal:fs.failType||FAIL_TYPES[0]};var u=fs.mode==='edit'?db.units.find(function(x){return x.id===fs.unitId;}):null;openUnitForm(u,fs);setTimeout(function(){refreshFormPhotoSlot('before');refreshFormPhotoSlot('after');},80);return true;}catch(e){return false;}
 }
 
-// ── QUICK ADD ─────────────────────────────────────────────────────────────────
+// - QUICK ADD -
 function showQuickAddModal(){
   qaStatus=null;
   openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaClean" onclick="selQAStatus(\'Clean\',this)">Clean</div><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
@@ -618,7 +632,7 @@ function submitQuickAdd(){
   db.units.push(nu);idbSave();closeModal();renderUnits();toast(epcor+' added');
 }
 
-// ── NEW MAP ───────────────────────────────────────────────────────────────────
+// - NEW MAP -
 function showNewMapModal(){
   newMapPhoto=null;
   var camSVG='<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
@@ -641,10 +655,8 @@ function createMap(){
   if(newMapPhoto)m.photo=newMapPhoto;newMapPhoto=null;db.maps.push(m);idbSave();closeModal();renderMaps();toast('Map created');
 }
 
-// ── SUMMARY ───────────────────────────────────────────────────────────────────
+// - SUMMARY -
 function showSummary(){
-  // Button tap feedback handled by .btn:active CSS
-  // Modal entrance handled by .modal-overlay.open .modal transition
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
   var map=db.maps.find(function(m){return m.id===state.mapId;});
   var fails=us.filter(function(u){return u.status==='Fail';}).length;
@@ -660,9 +672,23 @@ function showSummary(){
   if(map.notes)html+='<div class="section-lbl">Map notes</div><div style="font-size:14px;color:var(--text2);line-height:1.6">'+esc(map.notes)+'</div>';
   html+='<button class="btn" style="width:100%;margin-top:18px;padding:13px" onclick="closeModal()">Close</button>';
   openModal(html);
+  // Trigger spring entrance
+  var modal=document.querySelector('#overlay .modal');
+  if(modal){
+    modal.style.transition='none';
+    modal.style.transform='translateY(60px) scale(0.97)';
+    modal.style.opacity='0';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        modal.style.transition='transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s ease';
+        modal.style.transform='';
+        modal.style.opacity='';
+      });
+    });
+  }
 }
 
-// ── PDF — FULL ────────────────────────────────────────────────────────────────
+// - PDF — FULL -
 function exportPDF(){
   if(typeof jspdf==='undefined'){toast('PDF not ready, try again');return;}
   var map=db.maps.find(function(m){return m.id===state.mapId;});
@@ -683,7 +709,7 @@ function exportPDF(){
   doc.save(map.name.replace(/\s+/g,'_')+'_'+date+'.pdf');setTimeout(function(){toast('PDF saved!');},600);
 }
 
-// ── PDF — SUPERVISOR ──────────────────────────────────────────────────────────
+// - PDF — SUPERVISOR -
 function exportSupervisorPDF(){
   if(typeof jspdf==='undefined'){toast('PDF not ready, try again');return;}
   var map=db.maps.find(function(m){return m.id===state.mapId;});
@@ -729,7 +755,7 @@ function exportSupervisorPDF(){
   doc.save(map.name.replace(/\s+/g,'_')+'_supervisor_'+date+'.pdf');setTimeout(function(){toast('Supervisor PDF saved!');},600);
 }
 
-// ── PDF — UNIT ────────────────────────────────────────────────────────────────
+// - PDF — UNIT -
 function exportUnitPDF(id){
   if(typeof jspdf==='undefined'){toast('PDF not ready, try again');return;}
   var u=db.units.find(function(x){return x.id===id;});var map=db.maps.find(function(m){return m.id===u.mapId;});
@@ -746,11 +772,11 @@ function exportUnitPDF(id){
   doc.save(u.epcor.replace(/\s+/g,'_')+'_'+date+'.pdf');setTimeout(function(){toast('PDF saved!');},600);
 }
 
-// ── BACKUP ────────────────────────────────────────────────────────────────────
-function exportBackup(){var blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='utilitylog_'+new Date().toLocaleDateString('en-CA')+'.json';a.click();URL.revokeObjectURL(url);toast('Backup exported!');}
+// - BACKUP -
+function exportBackup(){var blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='vault_'+new Date().toLocaleDateString('en-CA')+'.json';a.click();URL.revokeObjectURL(url);toast('Backup exported!');}
 function importBackup(e){var file=e.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(ev){try{var p=JSON.parse(ev.target.result);if(p.maps&&p.units){if(!confirm('Replace all current data with this backup?'))return;if(!p.trash)p.trash=[];db=p;idbSave();showMaps();toast('Backup imported!');}else toast('Invalid backup file');}catch(err){toast('Could not read file');}};r.readAsText(file);e.target.value='';}
 
-// ── MODAL ─────────────────────────────────────────────────────────────────────
+// - MODAL -
 function openModal(html){$('modalBox').innerHTML='<div class="modal-handle"></div>'+html;$('overlay').classList.add('open');}
 function closeModal(){$('overlay').classList.remove('open');patchCount=0;formGPS=null;}
 function closeModalOutside(e){
@@ -765,7 +791,7 @@ function closeModalOutside(e){
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 openIDB(function(){idbGet(function(){if(!restoreFormIfNeeded())showMaps();});});
 
-// ── EXTRAS ────────────────────────────────────────────────────────────────────
+// - EXTRAS -
 function removeDraftAndClose(){
   // called from form discard button — need to find the draft being edited
   // since we removed it from the list when resuming, just close

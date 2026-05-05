@@ -1,9 +1,8 @@
 {
-  "name": "UtilityLog",
-  "short_name": "UtilityLog",
-  "description": "Utility inspection tracking app",
-  "scope": "/utilitylog/",
-  "start_url": "/utilitylog/",
+  "name": "VAULT",
+  "short_name": "VAULT",
+  "description": "Visual Asset Utility Log Tool",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#111111",
