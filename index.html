@@ -100,31 +100,32 @@
     /* ── FAB SYSTEM ── */
     .fab-root{
       position:fixed;
-      bottom:max(24px,calc(env(safe-area-inset-bottom)+20px));
+      bottom:28px;
       right:18px;
-      z-index:50;
-      display:flex;flex-direction:column;align-items:flex-end;gap:10px;
+      z-index:90;
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:10px;
     }
     .fab-menu{display:flex;flex-direction:column;align-items:flex-end;gap:8px;pointer-events:none;opacity:0;transform:translateY(8px);transition:opacity 0.2s var(--ease),transform 0.2s var(--ease)}
     .fab-menu.open{pointer-events:auto;opacity:1;transform:translateY(0)}
-    .fab-option{display:flex;align-items:center;gap:10px;cursor:pointer;animation:none}
+    .fab-option{display:flex;align-items:center;gap:10px;cursor:pointer}
     .fab-option-label{background:var(--bg3);color:var(--text);font-size:13px;font-weight:600;padding:7px 14px;border-radius:20px;border:0.5px solid var(--border2);white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.4)}
     .fab-option-btn{width:40px;height:40px;border-radius:50%;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.3);flex-shrink:0}
     .fab-option-btn.full{background:var(--grn)}
     .fab-option-btn.quick{background:var(--bg3);border:0.5px solid var(--border2)}
     .fab-main{
       width:50px;height:50px;border-radius:50%;border:none;
-      background:var(--grn);color:#fff;
-      cursor:pointer;
-      display:flex;
-      align-items:center;justify-content:center;
+      background:var(--grn);color:#fff;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
       box-shadow:0 4px 20px rgba(26,158,82,0.45);
       transition:transform 0.2s var(--spring),background 0.2s;
       flex-shrink:0;
     }
     .fab-main.open{transform:rotate(45deg);background:var(--bg4)}
     .fab-main:active{transform:scale(0.92)}
-    .fab-backdrop{display:none;position:fixed;inset:0;z-index:45;background:rgba(0,0,0,0.5)}
+    .fab-backdrop{display:none;position:fixed;inset:0;z-index:88;background:rgba(0,0,0,0.5)}
     .fab-backdrop.open{display:block}
 
     /* ── BUTTONS ── */
@@ -366,7 +367,6 @@
     <div id="screenTrash" class="screen"></div>
   </div>
 
-  </div>
 </div>
 
 <div class="fab-backdrop" id="fabBackdrop" onclick="closeFabMenu()"></div>
