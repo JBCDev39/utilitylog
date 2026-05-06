@@ -140,11 +140,9 @@ function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2
 function toast(msg,duration){var t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},duration||2400);}
 function $(id){return document.getElementById(id);}
 function setTitle(text){
-  var el=$('topTitle');
-  if(!el)return;
-  el.className='top-bar-title';
-  el.textContent=text;
-  var bw=$('backWrap');
+  var t=$('topTitle');var l=$('logoWrap');var bw=$('backWrap');
+  if(t){t.textContent=text;t.style.display='';}
+  if(l)l.style.display='none';
   if(bw)bw.style.display='';
 }
 
@@ -278,9 +276,11 @@ function calcGlobalStats(){
 // - MAPS -
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
-  $('topTitle').className='top-bar-logo';
-  $('topTitle').innerHTML='<svg width="32" height="34" viewBox="0 0 34 36" fill="none"><polyline points="3,4 3,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><polyline points="31,4 31,16 17,30" stroke="#1a9e52" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="3" cy="4" r="3.2" fill="#22c55e"/><circle cx="31" cy="4" r="3.2" fill="#22c55e"/><circle cx="17" cy="30" r="3.2" fill="#22c55e"/><circle cx="3" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/><circle cx="31" cy="16" r="2" fill="none" stroke="#1a9e52" stroke-width="1.3"/><line x1="3" y1="4" x2="31" y2="4" stroke="#1a9e52" stroke-width="0.9" stroke-dasharray="2.5,2"/></svg><div class="vault-logo-wordmark"><span class="vault-logo-name">VAULT</span><span class="vault-logo-sub">VISUAL ASSET LOG</span></div>';
-  $('backWrap').style.display='none';$('controlsRow').classList.remove('visible');
+  var t=$('topTitle');var l=$('logoWrap');var bw=$('backWrap');
+  if(t)t.style.display='none';
+  if(l)l.style.display='flex';
+  if(bw)bw.style.display='none';
+  $('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge" style="position:absolute;top:-4px;right:-4px;margin:0">'+tc+'</span>':'')+'</button>';
