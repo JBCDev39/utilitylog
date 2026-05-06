@@ -274,6 +274,56 @@ function calcGlobalStats(){
 }
 
 // - MAPS -
+function showGlobalSearch(){
+  openModal('<p class="modal-title">Search</p>'
+    +'<div class="search-wrap" style="margin-bottom:14px">'
+    +'<svg class="search-icon" width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="5" stroke="#6b6560" stroke-width="1.5"/><path d="M10 10L13 13" stroke="#6b6560" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    +'<input class="search-input" id="globalQ" placeholder="Search maps or units…" oninput="renderGlobalResults(this.value)" autocomplete="off" autocorrect="off" spellcheck="false"/></div>'
+    +'<div id="globalResults"><div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">Start typing to search</div></div>');
+  setTimeout(function(){var el=$('globalQ');if(el)el.focus();},180);
+}
+function renderGlobalResults(q){
+  q=(q||'').trim().toLowerCase();
+  var el=$('globalResults');if(!el)return;
+  if(!q){el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">Start typing to search</div>';return;}
+  var html='';
+  var maps=db.maps.filter(function(m){return m.name.toLowerCase().includes(q)||(m.location||'').toLowerCase().includes(q);});
+  if(maps.length){
+    html+='<div class="section-lbl" style="margin-top:0;margin-bottom:8px">Maps</div>';
+    html+=maps.map(function(m){
+      var uc=db.units.filter(function(u){return u.mapId===m.id;}).length;
+      return '<div class="search-result-row" data-type="map" data-id="'+esc(m.id)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(m.name)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+esc(m.location||'')+(uc?' · '+uc+' units':'')+'</div></div>'
+        +mapTypeBadge(m.type)+'</div>';
+    }).join('');
+  }
+  var units=db.units.filter(function(u){return (u.epcor||'').toLowerCase().includes(q)||(u.asap||'').toString().includes(q);});
+  if(units.length){
+    html+='<div class="section-lbl" style="margin-top:14px;margin-bottom:8px">Units</div>';
+    html+=units.slice(0,20).map(function(u){
+      var map=db.maps.find(function(m){return m.id===u.mapId;});
+      return '<div class="search-result-row" data-type="unit" data-id="'+esc(u.id)+'" data-map="'+esc(u.mapId)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:14px;font-weight:600;font-family:monospace;color:var(--text)">'+esc(u.epcor)+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(map?esc(map.name)+' · ':'')+(u.asap?'ASAP #'+esc(u.asap)+' · ':'')+esc(u.status||'')+'</div></div>'
+        +statusBadge(u.status,false,u.failType)+'</div>';
+    }).join('');
+    if(units.length>20)html+='<div style="font-size:11px;color:var(--text3);padding:8px 0">'+units.length+' results — type more to narrow</div>';
+  }
+  if(!maps.length&&!units.length)html='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">No results for "'+esc(q)+'"</div>';
+  el.innerHTML=html;
+  // Attach click handlers after render
+  el.querySelectorAll('.search-result-row').forEach(function(row){
+    row.addEventListener('click',function(){
+      var type=row.getAttribute('data-type');
+      var id=row.getAttribute('data-id');
+      var mapId=row.getAttribute('data-map');
+      closeModal();
+      if(type==='map'){showUnits(id);}
+      else{state.mapId=mapId;showUnit(id);}
+    });
+  });
+}
 function showMaps(dir){
   state.mapId=null;state.unitId=null;
   var t=$('topTitle');var l=$('logoWrap');var bw=$('backWrap');
@@ -288,7 +338,7 @@ function showMaps(dir){
 }
 function renderMaps(){
   var c=$('screenMaps');var g=calcGlobalStats();
-  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalPatches+'</div><div class="stat-cell-lbl">Patches</div></div></div>'+(g.totalVeg?'<div class="stats-divider"></div><div style="font-size:12px;color:var(--text2)">'+g.totalVeg+' vegetation · '+g.activeMaps+' active map'+(g.activeMaps!==1?'s':'')+'</div>':'')+'</div>';
+  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num" style="color:var(--door-fail)">'+g.totalDoorFails+'</div><div class="stat-cell-lbl">Door Fails</div></div></div></div>';
   if(!db.maps.length){c.innerHTML=banner+'<div class="empty-state"><div class="empty-title">No maps yet</div><div class="empty-sub">Tap + to create your first map</div></div>'+dataSection();return;}
   c.innerHTML=banner+db.maps.map(function(m,i){
     var us=db.units.filter(function(u){return u.mapId===m.id;});
@@ -358,6 +408,16 @@ function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
 
 // - TRASH -
+function toggleMapDotMenu(e,mapId){
+  e.stopPropagation();
+  closeAllMapDots();
+  var dd=$('mapDD_'+mapId);
+  if(dd)dd.classList.add('open');
+  setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);
+}
+function closeAllMapDots(){
+  document.querySelectorAll('[id^="mapDD_"]').forEach(function(el){el.classList.remove('open');});
+}
 function softDeleteMap(mapId,mapName){if(!confirm('Move "'+mapName+'" to trash?'))return;var map=db.maps.find(function(m){return m.id===mapId;});var units=db.units.filter(function(u){return u.mapId===mapId;});db.trash.push({map:map,units:units,deletedAt:Date.now()});db.maps=db.maps.filter(function(m){return m.id!==mapId;});db.units=db.units.filter(function(u){return u.mapId!==mapId;});idbSave();showMaps();toast('Moved to trash');}
 function purgeExpiredTrash(){var b=db.trash.length;db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});if(db.trash.length!==b)idbSave();}
 function showTrash(){
@@ -484,8 +544,8 @@ function showGallery(){
   }
   var befores=us.filter(function(u){return u.beforePhoto;});
   var afters=us.filter(function(u){return u.afterPhoto;});
-  if(befores.length){html+='<div class="gallery-section-title">Before</div><div class="gallery-grid">';html+=befores.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'before\')"><img src="'+u.beforePhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+'</div></div>';}).join('');html+='</div>';}
-  if(afters.length){html+='<div class="gallery-section-title">After</div><div class="gallery-grid">';html+=afters.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'after\')"><img src="'+u.afterPhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+(u.status==='Fail'?' · Patched':'')+'</div></div>';}).join('');html+='</div>';}
+  if(befores.length){html+='<div class="gallery-section-title">Before</div><div class="gallery-grid">';html+=befores.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'before\')"><img src="'+u.beforePhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+'</div>'+(u.status?'<div style="position:absolute;top:6px;right:6px">'+statusBadge(u.status,false,u.failType)+'</div>':'')+'</div>';}).join('');html+='</div>';}
+  if(afters.length){html+='<div class="gallery-section-title">After</div><div class="gallery-grid">';html+=afters.map(function(u){return '<div class="gallery-item" onclick="viewGalleryPhoto(\''+u.id+'\',\'after\')"><img src="'+u.afterPhoto+'" alt="'+esc(u.epcor)+'"><div class="gallery-label">'+esc(u.epcor)+(u.asap?' · #'+esc(u.asap):'')+'</div>'+(u.status?'<div style="position:absolute;top:6px;right:6px">'+statusBadge(u.status,false,u.failType)+'</div>':'')+'</div>';}).join('');html+='</div>';}
   c.innerHTML=html;setScreen('gallery');
 }
 function galleryViewMapPhoto(){var map=db.maps.find(function(m){return m.id===state.mapId;});if(!map||!map.photo)return;openZoomPhoto(map.photo,esc(map.name));}
@@ -599,7 +659,7 @@ function openUnitForm(u,saved){
   var chevSVG='<svg width="12" height="7" viewBox="0 0 12 7" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var html='<p class="modal-title">'+(u&&!saved?'Edit '+esc(u.epcor):(saved?'Resume draft':'Add unit'))+'</p>'
     +'<div class="form-group"><label class="form-label">EPCOR # <span style="color:var(--fail);font-size:10px">required</span></label><input id="uEpcor" value="'+(saved?esc(saved.epcor):(u?esc(u.epcor):(formState.mode==='new'&&unitType==='Pedestal'?'PED':'')))+'" placeholder="'+(unitType==='Pedestal'?'e.g. 15828':'e.g. T1234')+'" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();onEpcorInput()"/><div class="field-warn" id="warnEpcor">EPCOR # is required</div></div>'
-    +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--warn);font-size:10px">recommended</span></label><input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is missing — unit will be flagged incomplete</div></div>'
+    +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--warn);font-size:10px">recommended</span></label><input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is required</div></div>'
     +'<div class="form-group"><label class="form-label">Unit type</label><div class="seg" id="uTypeSeg">'+['Pedestal','Transformer'].map(function(t){var active=saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal');return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uTypeSeg\',this);onUnitTypeChange(this)">'+t+'</button>';}).join('')+'</div></div>'
     +'<div id="finsGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="toggle-row"><div><div class="toggle-label">Fins</div><div class="toggle-sub">Does this transformer have fins?</div></div><label class="toggle-switch"><input type="checkbox" id="uFins"'+(finsVal?' checked':'')+'/><div class="toggle-track"></div></label></div></div>'
     +'<div id="subtypeGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Transformer subtype</label><div class="seg" id="uSubtypeSeg">'+([ 'Transformer','Cabinet','Cubicle'].map(function(t){var sv=saved?saved.transSubtype:(u?u.transSubtype:null);var active=sv?sv===t:t==='Transformer';return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uSubtypeSeg\',this)">'+t+'</button>';}).join(''))+'</div></div></div>'
@@ -608,18 +668,13 @@ function openUnitForm(u,saved){
     +'<div class="form-group"><label class="form-label">Fail type</label><button class="form-picker" onclick="openPicker(\'failType\')"><span class="form-picker-val" id="failTypeDisplay">'+esc(failTypeVal)+'</span><span class="form-picker-chevron">'+chevSVG+'</span></button></div>'
     +'<div class="form-group"><label class="form-label">Patches</label><div class="patch-ctrl"><button class="patch-btn" onclick="adjP(-1)">−</button><span class="patch-val" id="pNum">'+(saved?saved.patches:(u?u.patches||0:0))+'</span><button class="patch-btn" onclick="adjP(1)">+</button></div></div></div>'
     +'<div class="form-group"><label class="form-label">GPS location</label><button class="btn" style="width:100%;gap:8px" onclick="stampGPSForm()">'+gpsSVG+'<span id="gpsFormLabel">'+(formGPS?'Lat '+formGPS.lat.toFixed(5)+' · Lon '+formGPS.lng.toFixed(5):'Stamp current location')+'</span></button></div>'
-    +'<div class="form-group"><label class="form-label">Before photo</label><div class="photo-form-wrap'+(val('uEpcor')||u||saved?'':' blocked')+'" id="formPhoto_before">'+formPhotoSlotInner('before')+'</div><p class="form-hint" id="photoHint" style="display:'+(val('uEpcor')||u||saved?'none':'block')+'">Enter EPCOR # first to enable photos</p></div>'
-    +'<div class="form-group"><label class="form-label">After photo</label><div class="photo-form-wrap'+(val('uEpcor')||u||saved?'':' blocked')+'" id="formPhoto_after">'+formPhotoSlotInner('after')+'</div></div>'
+    +'<div class="form-group"><label class="form-label">Photos</label><div id="photoCompact" style="display:flex;gap:8px">'+(val('uEpcor')||u||saved?compactPhotoBtn('before')+compactPhotoBtn('after'):'<span style="font-size:12px;color:var(--text3)">Enter EPCOR # first</span>')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea id="uNotes" rows="2" placeholder="Optional notes…">'+(saved?esc(saved.notes||''):(u?esc(u.notes||''):''))+'</textarea></div>'
     +'<button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">'+(formState.mode==='edit'?'Save changes':'Add unit')+'</button>'
     +(saved?'<button class="btn" style="width:100%;padding:11px;margin-top:8px" onclick="removeDraftAndClose()">Discard this draft</button>':'');
   openModal(html);
   if(saved)patchCount=saved.patches||0;
-  // Show ASAP warning softly after a moment
-  setTimeout(function(){
-    var asapEl=$('uAsap');var warn=$('warnAsap');
-    if(asapEl&&warn&&!asapEl.value){warn.classList.add('show');}
-  },1000);
+
 }
 function onUnitTypeChange(btn){
   var isPed=btn.textContent==='Pedestal';var isTrans=btn.textContent==='Transformer';
@@ -663,6 +718,8 @@ function chkFail(){var s=activeInSeg('uStatSeg');var isFail=s==='Fail';var el=$(
 function submitUnitForm(){
   var epcor=val('uEpcor').trim();
   if(!epcor){var w=$('warnEpcor');if(w)w.classList.add('show');toast('EPCOR # is required');return;}
+  var asapVal=val('uAsap').trim();
+  if(!asapVal){var wa=$('warnAsap');if(wa)wa.classList.add('show');toast('ASAP # is required');return;}
   var status=activeInSeg('uStatSeg');var isFail=status==='Fail';
   var finsEl=$('uFins');var fins=finsEl?finsEl.checked:false;
   var failType=formState.failTypeVal||FAIL_TYPES[0];
@@ -696,12 +753,25 @@ function submitUnitForm(){
 }
 
 // - FORM PHOTOS -
+function compactPhotoBtn(key){
+  var label=key==='before'?'Before':'After';
+  var camSVG='<svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.4"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.4"/></svg>';
+  if(formPhotos[key]){
+    return '<div style="position:relative;flex:1;border-radius:var(--radius);overflow:hidden;height:72px;cursor:pointer" onclick="formLaunch(\''+key+'\',false)">'
+      +'<img src="'+formPhotos[key]+'" style="width:100%;height:100%;object-fit:cover;display:block">'
+      +'<div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.55);padding:3px 7px;font-size:10px;font-weight:600;color:#fff;display:flex;justify-content:space-between">'
+      +'<span>'+label+'</span>'
+      +'<span onclick="event.stopPropagation();formRemovePhoto(\''+key+'\');" style="cursor:pointer;opacity:0.8">remove</span>'
+      +'</div></div>';
+  }
+  return '<button class="btn" style="flex:1;height:72px;flex-direction:column;gap:5px;border-style:dashed" onclick="formLaunch(\''+key+'\',false)">'+camSVG+'<span style="font-size:11px">'+label+'</span></button>';
+}
 function formPhotoSlotInner(key){
   var camSVG='<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
   if(formPhotos[key])return '<img class="photo-form-preview" src="'+formPhotos[key]+'" alt="photo"><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Retake</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button><button onclick="formRemovePhoto(\''+key+'\')">Remove</button></div>';
   return '<div class="photo-form-empty" onclick="formLaunch(\''+key+'\',false)">'+camSVG+'<span class="pfe-lbl">Tap to add</span></div><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Camera</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button></div>';
 }
-function refreshFormPhotoSlot(key){var s=$('formPhoto_'+key);if(s)s.innerHTML=formPhotoSlotInner(key);}
+function refreshFormPhotoSlot(key){var c=$('photoCompact');if(c)c.innerHTML=(val('uEpcor')?compactPhotoBtn('before')+compactPhotoBtn('after'):'<span style="font-size:12px;color:var(--text3)">Enter EPCOR # first</span>');}
 function formRemovePhoto(key){formPhotos[key]=null;refreshFormPhotoSlot(key);saveFormState();}
 function formLaunch(key,cam){
   var epcor=val('uEpcor').trim();if(!epcor){toast('Enter EPCOR # first');return;}
@@ -716,16 +786,16 @@ function restoreFormIfNeeded(){
 // - QUICK ADD -
 function showQuickAddModal(){
   qaStatus=null;
-  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div><div class="qa-status-opt" id="qaOther" onclick="selQAStatus(\'Other\',this)">Other</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
+  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">ASAP # <span style="color:var(--fail);font-size:10px">required</span></label><input id="qaAsap" type="number" placeholder="e.g. 33" oninput="checkQASubmit()" style="width:100%;padding:12px 14px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg2);color:var(--text);font-size:15px;font-family:inherit;outline:none"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div><div class="qa-status-opt" id="qaOther" onclick="selQAStatus(\'Other\',this)">Other</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button>');
   setTimeout(function(){var el=$('qaEpcor');if(el)el.focus();},150);
 }
 function selQAStatus(s,el){qaStatus=s;var cls={Other:'sel-other',Fail:'sel-fail',Vegetation:'sel-veg','No Access':'sel-na'};['qaFail','qaVeg','qaNA','qaOther'].forEach(function(id){var btn=$(id);if(btn)btn.className='qa-status-opt';});el.classList.add(cls[s]||'');checkQASubmit();}
-function checkQASubmit(){var btn=$('qaSubmitBtn');if(btn)btn.disabled=!(val('qaEpcor').trim()&&qaStatus);}
+function checkQASubmit(){var btn=$('qaSubmitBtn');if(btn)btn.disabled=!(val('qaEpcor').trim()&&qaStatus&&val('qaAsap').trim());}
 function submitQuickAdd(){
   var epcor=val('qaEpcor').trim();if(!epcor||!qaStatus)return;
   var dupes=checkDupe(state.mapId,epcor,null,null);
   if(dupes.epcor&&!confirm('EPCOR # "'+epcor+'" already exists in this map. Save anyway?'))return;
-  var nu={id:uid(),mapId:state.mapId,epcor:epcor,asap:'',unitType:'Pedestal',status:qaStatus,failType:'',patches:0,notes:'',createdAt:Date.now()};
+  var nu={id:uid(),mapId:state.mapId,epcor:epcor,asap:val('qaAsap').trim(),unitType:'Pedestal',status:qaStatus,failType:'',patches:0,notes:'',createdAt:Date.now()};
   recordHistory(nu,null);
   db.units.push(nu);idbSave();closeModal();renderUnits();toast(epcor+' added');
 }
@@ -775,6 +845,7 @@ function showSummary(){
   var patches=us.reduce(function(a,u){return a+(u.patches||0);},0);
   var incomplete=us.filter(function(u){return isUnitIncomplete(u);}).length;
   function sm(n,l,red,color){return '<div class="sum-box"><div class="sum-num'+(red?' red':'')+(color?' style="color:'+color+'"':'')+'">'+n+'</div><div class="sum-lbl">'+l+'</div></div>';}
+  var date=map.createdAt?new Date(map.createdAt).toLocaleDateString('en-CA'):'';
   var html='<p class="modal-title">'+esc(map.name)+'</p>'+(map.location||date?'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">'+esc(map.location)+(date?' · '+date:'')+'</div>':'')+'<div class="sum-grid">'+sm(us.length,'Total')+sm(fails,'Fails',fails>0)+sm(doorFails,'Door Fails',false,'#fb923c')+sm(patches,'Patches')+sm(veg,'Veg')+sm(na,'No access')+'</div>';
   if(incomplete)html+='<div style="background:var(--warn-bg);border:0.5px solid var(--warn-border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:13px;color:var(--warn)">'+incomplete+' unit'+(incomplete>1?'s':'')+' incomplete (missing status, ASAP #, or unit type)</div>';
   if(fails){html+='<div class="section-lbl">Fail breakdown</div><div style="font-size:14px;line-height:2.4">';FAIL_TYPES.forEach(function(f){var n=us.filter(function(u){return u.failType===f;}).length;if(n)html+=esc(f)+': <strong style="color:var(--grn-text)">'+n+'</strong><br>';});html+='</div>';}
