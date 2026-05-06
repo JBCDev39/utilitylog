@@ -906,7 +906,7 @@ function showUnitTrash(){
       +'<div><div style="font-family:monospace;font-size:14px;font-weight:600">'+esc(t.unit.epcor)+'</div>'
       +'<div style="font-size:11px;color:var(--warn);margin-top:3px">'+days+' day'+(days!==1?'s':'')+' left</div></div>'
       +'<div style="display:flex;gap:6px">'
-      +'<button class="btn btn-sm" onclick="restoreUnit(\''+t.unit.id+'\')" >Restore</button>'
+      +'<button class="btn btn-sm btn-primary" onclick="restoreUnit(\''+t.unit.id+'\')" >Restore</button>'
       +'<button class="btn btn-sm btn-danger" onclick="permanentDeleteUnit(\''+t.unit.id+'\')" >Delete</button>'
       +'</div></div>';
   }).join('');
@@ -1084,8 +1084,16 @@ function initRipples(){
       el.addEventListener('touchstart',createRipple,{passive:true});
     }
   });
-  // Card taps
+  // Card taps (units list)
   document.querySelectorAll('.card-tap').forEach(function(el){
+    if(!el.classList.contains('ripple-host')){
+      el.classList.add('ripple-host');
+      el.addEventListener('mousedown',createRipple);
+      el.addEventListener('touchstart',createRipple,{passive:true});
+    }
+  });
+  // Map cards (home screen) — ripple on the whole card
+  document.querySelectorAll('#screenMaps .card').forEach(function(el){
     if(!el.classList.contains('ripple-host')){
       el.classList.add('ripple-host');
       el.addEventListener('mousedown',createRipple);
