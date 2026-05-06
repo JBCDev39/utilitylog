@@ -1,4 +1,4 @@
-function isDoorFail(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';}
+var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num" style="color:var(--door-fail)">'+g.totalDoorFails+'</div><div class="stat-cell-lbl">Door Fails</div></div></div></div>';function isDoorFail(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';}
 function isRealFail(u){return u.status==='Fail'&&u.failType!=='Rust Holes (Door)';}
 // - CONSTANTS -
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
@@ -285,35 +285,34 @@ function showGlobalSearch(){
 function renderGlobalResults(q){
   q=(q||'').trim().toLowerCase();
   var el=$('globalResults');if(!el)return;
-  if(!q){el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">Start typing to search</div>';return;}
+  if(!q){el.innerHTML='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">Start typing…</div>';return;}
   var html='';
   var maps=db.maps.filter(function(m){return m.name.toLowerCase().includes(q)||(m.location||'').toLowerCase().includes(q);});
   if(maps.length){
     html+='<div class="section-lbl" style="margin-top:0;margin-bottom:8px">Maps</div>';
     html+=maps.map(function(m){
       var uc=db.units.filter(function(u){return u.mapId===m.id;}).length;
-      return '<div class="search-result-row" data-type="map" data-id="'+esc(m.id)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+      return '<div class="g-result" data-type="map" data-id="'+esc(m.id)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-size:14px;font-weight:600;color:var(--text)">'+esc(m.name)+'</div>'
         +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+esc(m.location||'')+(uc?' · '+uc+' units':'')+'</div></div>'
         +mapTypeBadge(m.type)+'</div>';
     }).join('');
   }
-  var units=db.units.filter(function(u){return (u.epcor||'').toLowerCase().includes(q)||(u.asap||'').toString().includes(q);});
+  var units=db.units.filter(function(u){return (u.epcor||'').toLowerCase().includes(q)||(String(u.asap||'')).includes(q);});
   if(units.length){
     html+='<div class="section-lbl" style="margin-top:14px;margin-bottom:8px">Units</div>';
     html+=units.slice(0,20).map(function(u){
       var map=db.maps.find(function(m){return m.id===u.mapId;});
-      return '<div class="search-result-row" data-type="unit" data-id="'+esc(u.id)+'" data-map="'+esc(u.mapId)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+      return '<div class="g-result" data-type="unit" data-id="'+esc(u.id)+'" data-map="'+esc(u.mapId)+'" style="padding:12px 0;border-bottom:0.5px solid var(--border);cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-size:14px;font-weight:600;font-family:monospace;color:var(--text)">'+esc(u.epcor)+'</div>'
         +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(map?esc(map.name)+' · ':'')+(u.asap?'ASAP #'+esc(u.asap)+' · ':'')+esc(u.status||'')+'</div></div>'
         +statusBadge(u.status,false,u.failType)+'</div>';
     }).join('');
-    if(units.length>20)html+='<div style="font-size:11px;color:var(--text3);padding:8px 0">'+units.length+' results — type more to narrow</div>';
+    if(units.length>20)html+='<div style="font-size:11px;color:var(--text3);padding:8px 0">Showing 20 of '+units.length+' — type more to narrow</div>';
   }
-  if(!maps.length&&!units.length)html='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">No results for "'+esc(q)+'"</div>';
+  if(!maps.length&&!units.length)html='<div style="font-size:13px;color:var(--text3);text-align:center;padding:24px 0">No results</div>';
   el.innerHTML=html;
-  // Attach click handlers after render
-  el.querySelectorAll('.search-result-row').forEach(function(row){
+  el.querySelectorAll('.g-result').forEach(function(row){
     row.addEventListener('click',function(){
       var type=row.getAttribute('data-type');
       var id=row.getAttribute('data-id');
@@ -333,12 +332,13 @@ function showMaps(dir){
   $('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
   var trashSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M4 6h12M8 6V4h4v2M6 6l1 11h6l1-11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  $('topActs').innerHTML='<button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge">'+tc+'</span>':'')+'</button>';
+  var searchSVG='<svg width="16" height="16" viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  $('topActs').innerHTML='<button class="btn btn-icon" onclick="showGlobalSearch()" title="Search">'+searchSVG+'</button><button class="btn btn-icon" onclick="showTrash()" style="position:relative" title="Trash">'+trashSVG+(tc?'<span class="trash-badge">'+tc+'</span>':'')+'</button>';
   showFabSingle();renderMaps();setScreen('maps',dir||'fade');
 }
 function renderMaps(){
   var c=$('screenMaps');var g=calcGlobalStats();
-  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num" style="color:var(--door-fail)">'+g.totalDoorFails+'</div><div class="stat-cell-lbl">Door Fails</div></div></div></div>';
+  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalPatches+'</div><div class="stat-cell-lbl">Patches</div></div></div>'+(g.totalVeg?'<div class="stats-divider"></div><div style="font-size:12px;color:var(--text2)">'+g.totalVeg+' vegetation · '+g.activeMaps+' active map'+(g.activeMaps!==1?'s':'')+'</div>':'')+'</div>';
   if(!db.maps.length){c.innerHTML=banner+'<div class="empty-state"><div class="empty-title">No maps yet</div><div class="empty-sub">Tap + to create your first map</div></div>'+dataSection();return;}
   c.innerHTML=banner+db.maps.map(function(m,i){
     var us=db.units.filter(function(u){return u.mapId===m.id;});
@@ -351,7 +351,7 @@ function renderMaps(){
     var isComplete=m.status==='Completed';
     var cam='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color:var(--text3)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
     var thumb=m.photo?'<img class="map-thumb" src="'+m.photo+'" onclick="viewMapPhoto(\''+m.id+'\')" alt="Map">':'<div class="map-thumb-ph">'+cam+'</div>';
-    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')"><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+(m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':'')+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+'</div><div class="map-acts"><button class="btn btn-sm" onclick="editMapNotes(\''+m.id+'\')">Notes</button><button class="btn btn-sm" onclick="addMapPhoto(\''+m.id+'\')">Photo</button><button class="btn btn-sm" onclick="softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')">Delete</button></div></div>';
+    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')"><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+(m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':'')+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+'</div><div <div style=\"display:flex;justify-content:flex-end;align-items:center;padding-top:10px;margin-top:8px;border-top:0.5px solid var(--border)\"><div class=\"dot-menu-wrap\"><button class=\"dot-btn\" onclick=\"event.stopPropagation();toggleMapDotById(event,\''+m.id+'\')\"\ aria-label=\"Map options\"><span></span><span></span><span></span></button><div class=\"dot-dropdown\" id=\"mapDD_'+m.id+'\"><div class=\"dot-item\" onclick=\"closeAllMapDots();editMapNotes(\''+m.id+'\')\">Notes</div><div class=\"dot-item\" onclick=\"closeAllMapDots();addMapPhoto(\''+m.id+'\')\">Photo</div><div class=\"dot-item\" style=\"color:var(--fail)\" onclick=\"closeAllMapDots();softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')\">Delete</div></div></div></div></div>';
   }).join('')+dataSection();
 }
 function dataSection(){return '<div class="section-lbl" style="margin-top:4px">Data</div><div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:8px"><button class="btn" onclick="exportBackup()">Export backup</button><button class="btn" onclick="$(\'importFile\').click()">Import backup</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/></div>';}
@@ -408,16 +408,6 @@ function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
 
 // - TRASH -
-function toggleMapDotMenu(e,mapId){
-  e.stopPropagation();
-  closeAllMapDots();
-  var dd=$('mapDD_'+mapId);
-  if(dd)dd.classList.add('open');
-  setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);
-}
-function closeAllMapDots(){
-  document.querySelectorAll('[id^="mapDD_"]').forEach(function(el){el.classList.remove('open');});
-}
 function softDeleteMap(mapId,mapName){if(!confirm('Move "'+mapName+'" to trash?'))return;var map=db.maps.find(function(m){return m.id===mapId;});var units=db.units.filter(function(u){return u.mapId===mapId;});db.trash.push({map:map,units:units,deletedAt:Date.now()});db.maps=db.maps.filter(function(m){return m.id!==mapId;});db.units=db.units.filter(function(u){return u.mapId!==mapId;});idbSave();showMaps();toast('Moved to trash');}
 function purgeExpiredTrash(){var b=db.trash.length;db.trash=db.trash.filter(function(t){return daysLeft(t.deletedAt)>0;});if(db.trash.length!==b)idbSave();}
 function showTrash(){
@@ -659,7 +649,7 @@ function openUnitForm(u,saved){
   var chevSVG='<svg width="12" height="7" viewBox="0 0 12 7" fill="none"><path d="M1 1l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   var html='<p class="modal-title">'+(u&&!saved?'Edit '+esc(u.epcor):(saved?'Resume draft':'Add unit'))+'</p>'
     +'<div class="form-group"><label class="form-label">EPCOR # <span style="color:var(--fail);font-size:10px">required</span></label><input id="uEpcor" value="'+(saved?esc(saved.epcor):(u?esc(u.epcor):(formState.mode==='new'&&unitType==='Pedestal'?'PED':'')))+'" placeholder="'+(unitType==='Pedestal'?'e.g. 15828':'e.g. T1234')+'" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();onEpcorInput()"/><div class="field-warn" id="warnEpcor">EPCOR # is required</div></div>'
-    +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--warn);font-size:10px">recommended</span></label><input id="uAsap" type="number" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is required</div></div>'
+    +'<div class="form-group"><label class="form-label">ASAP # <span style="color:var(--fail);font-size:10px">required</span></label><input id="uAsap" type="'+(isTrans?'text':'number')+'" value="'+(saved?saved.asap:(u&&u.asap?u.asap:''))+'" placeholder="e.g. 33"/><div class="field-warn" id="warnAsap">ASAP # is required</div></div>'
     +'<div class="form-group"><label class="form-label">Unit type</label><div class="seg" id="uTypeSeg">'+['Pedestal','Transformer'].map(function(t){var active=saved?saved.unitType===t:(u?u.unitType===t:t==='Pedestal');return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uTypeSeg\',this);onUnitTypeChange(this)">'+t+'</button>';}).join('')+'</div></div>'
     +'<div id="finsGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="toggle-row"><div><div class="toggle-label">Fins</div><div class="toggle-sub">Does this transformer have fins?</div></div><label class="toggle-switch"><input type="checkbox" id="uFins"'+(finsVal?' checked':'')+'/><div class="toggle-track"></div></label></div></div>'
     +'<div id="subtypeGroup" class="field-expand'+(isTrans?' shown':' hidden')+'" style="max-height:'+(isTrans?'80px':'0')+';margin-bottom:'+(isTrans?'16':'0')+'px"><div class="form-group" style="margin-bottom:0"><label class="form-label">Transformer subtype</label><div class="seg" id="uSubtypeSeg">'+([ 'Transformer','Cabinet','Cubicle'].map(function(t){var sv=saved?saved.transSubtype:(u?u.transSubtype:null);var active=sv?sv===t:t==='Transformer';return '<button'+(active?' class="active"':'')+' onclick="segSel(\'uSubtypeSeg\',this)">'+t+'</button>';}).join(''))+'</div></div></div>'
@@ -668,7 +658,7 @@ function openUnitForm(u,saved){
     +'<div class="form-group"><label class="form-label">Fail type</label><button class="form-picker" onclick="openPicker(\'failType\')"><span class="form-picker-val" id="failTypeDisplay">'+esc(failTypeVal)+'</span><span class="form-picker-chevron">'+chevSVG+'</span></button></div>'
     +'<div class="form-group"><label class="form-label">Patches</label><div class="patch-ctrl"><button class="patch-btn" onclick="adjP(-1)">−</button><span class="patch-val" id="pNum">'+(saved?saved.patches:(u?u.patches||0:0))+'</span><button class="patch-btn" onclick="adjP(1)">+</button></div></div></div>'
     +'<div class="form-group"><label class="form-label">GPS location</label><button class="btn" style="width:100%;gap:8px" onclick="stampGPSForm()">'+gpsSVG+'<span id="gpsFormLabel">'+(formGPS?'Lat '+formGPS.lat.toFixed(5)+' · Lon '+formGPS.lng.toFixed(5):'Stamp current location')+'</span></button></div>'
-    +'<div class="form-group"><label class="form-label">Photos</label><div id="photoCompact" style="display:flex;gap:8px">'+(val('uEpcor')||u||saved?compactPhotoBtn('before')+compactPhotoBtn('after'):'<span style="font-size:12px;color:var(--text3)">Enter EPCOR # first</span>')+'</div></div>'
+    +'<div class="form-group"><label class="form-label">Photos</label><div id="photoCompact" style="display:flex;gap:8px">'+compactPhotoBtn('before')+compactPhotoBtn('after')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea id="uNotes" rows="2" placeholder="Optional notes…">'+(saved?esc(saved.notes||''):(u?esc(u.notes||''):''))+'</textarea></div>'
     +'<button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;margin-top:4px" onclick="submitUnitForm()">'+(formState.mode==='edit'?'Save changes':'Add unit')+'</button>'
     +(saved?'<button class="btn" style="width:100%;padding:11px;margin-top:8px" onclick="removeDraftAndClose()">Discard this draft</button>':'');
@@ -771,10 +761,9 @@ function formPhotoSlotInner(key){
   if(formPhotos[key])return '<img class="photo-form-preview" src="'+formPhotos[key]+'" alt="photo"><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Retake</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button><button onclick="formRemovePhoto(\''+key+'\')">Remove</button></div>';
   return '<div class="photo-form-empty" onclick="formLaunch(\''+key+'\',false)">'+camSVG+'<span class="pfe-lbl">Tap to add</span></div><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Camera</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button></div>';
 }
-function refreshFormPhotoSlot(key){var c=$('photoCompact');if(c)c.innerHTML=(val('uEpcor')?compactPhotoBtn('before')+compactPhotoBtn('after'):'<span style="font-size:12px;color:var(--text3)">Enter EPCOR # first</span>');}
+function refreshFormPhotoSlot(key){var c=$('photoCompact');if(c)c.innerHTML=compactPhotoBtn('before')+compactPhotoBtn('after');}
 function formRemovePhoto(key){formPhotos[key]=null;refreshFormPhotoSlot(key);saveFormState();}
 function formLaunch(key,cam){
-  var epcor=val('uEpcor').trim();if(!epcor){toast('Enter EPCOR # first');return;}
   formState.pendingPhotoKey=key;saveFormState();
   var inp=document.createElement('input');inp.type='file';inp.accept='image/*';if(cam)inp.capture='environment';
   inp.onchange=function(){var file=inp.files[0];if(!file)return;var r=new FileReader();r.onload=function(e){compressImage(e.target.result,1600,0.85,function(comp){formPhotos[key]=comp;formState.pendingPhotoKey=null;saveFormState();refreshFormPhotoSlot(key);toast('Photo added');});};r.readAsDataURL(file);};inp.click();
