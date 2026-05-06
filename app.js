@@ -259,6 +259,8 @@ function goBack(){
 }
 
 // - GLOBAL STATS -
+function isDoorFail(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';}
+function isRealFail(u){return u.status==='Fail'&&u.failType!=='Rust Holes (Door)';}
 function calcGlobalStats(){
   return {
     totalMaps:db.maps.length,totalUnits:db.units.length,
