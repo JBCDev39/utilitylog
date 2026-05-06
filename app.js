@@ -716,7 +716,7 @@ function restoreFormIfNeeded(){
 // - QUICK ADD -
 function showQuickAddModal(){
   qaStatus=null;
-  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaClean" onclick="selQAStatus(\'Clean\',this)">Clean</div><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
+  openModal('<p class="modal-title">Quick Add</p><div class="form-group"><label class="form-label">EPCOR #</label><input class="qa-epcor" id="qaEpcor" placeholder="e.g. PED15828" autocomplete="off" autocorrect="off" spellcheck="false" oninput="this.value=this.value.toUpperCase();checkQASubmit()"/></div><div class="form-group"><label class="form-label">Status</label><div class="qa-status-grid"><div class="qa-status-opt" id="qaFail" onclick="selQAStatus(\'Fail\',this)">Fail</div><div class="qa-status-opt" id="qaVeg" onclick="selQAStatus(\'Vegetation\',this)">Vegetation</div><div class="qa-status-opt" id="qaNA" onclick="selQAStatus(\'No Access\',this)">No Access</div><div class="qa-status-opt" id="qaOther" onclick="selQAStatus(\'Other\',this)">Other</div></div></div><button class="qa-submit" id="qaSubmitBtn" disabled onclick="submitQuickAdd()">Save unit</button><p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">ASAP # and unit type can be filled in later</p>');
   setTimeout(function(){var el=$('qaEpcor');if(el)el.focus();},150);
 }
 function selQAStatus(s,el){qaStatus=s;var cls={Other:'sel-other',Fail:'sel-fail',Vegetation:'sel-veg','No Access':'sel-na'};['qaFail','qaVeg','qaNA','qaOther'].forEach(function(id){var btn=$(id);if(btn)btn.className='qa-status-opt';});el.classList.add(cls[s]||'');checkQASubmit();}
@@ -884,6 +884,56 @@ function exportUnitPDF(id){
 }
 
 // - BACKUP -
+
+function softDeleteUnit(unitId){
+  var u=db.units.find(function(x){return x.id===unitId;});
+  if(!u)return;
+  if(!confirm('Move '+u.epcor+' to trash?'))return;
+  if(!db.unitTrash)db.unitTrash=[];
+  db.unitTrash.push({unit:JSON.parse(JSON.stringify(u)),deletedAt:Date.now(),mapId:u.mapId});
+  db.units=db.units.filter(function(x){return x.id!==unitId;});
+  idbSave();goBack();renderUnits();toast(u.epcor+' moved to trash');
+}
+function showUnitTrash(){
+  if(!db.unitTrash)db.unitTrash=[];
+  purgeExpiredUnitTrash();
+  var mapUnits=db.unitTrash.filter(function(t){return t.mapId===state.mapId;});
+  if(!mapUnits.length){toast('No deleted units for this map');return;}
+  var html='<p class="modal-title">Deleted units</p>';
+  html+=mapUnits.map(function(t){
+    var days=daysLeft(t.deletedAt);
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:0.5px solid var(--border);gap:10px">'
+      +'<div><div style="font-family:monospace;font-size:14px;font-weight:600">'+esc(t.unit.epcor)+'</div>'
+      +'<div style="font-size:11px;color:var(--warn);margin-top:3px">'+days+' day'+(days!==1?'s':'')+' left</div></div>'
+      +'<div style="display:flex;gap:6px">'
+      +'<button class="btn btn-sm" onclick="restoreUnit(\''+t.unit.id+'\')" >Restore</button>'
+      +'<button class="btn btn-sm btn-danger" onclick="permanentDeleteUnit(\''+t.unit.id+'\')" >Delete</button>'
+      +'</div></div>';
+  }).join('');
+  html+='<button class="btn" style="width:100%;margin-top:16px;padding:12px" onclick="closeModal()">Close</button>';
+  openModal(html);
+}
+function purgeExpiredUnitTrash(){
+  if(!db.unitTrash)return;
+  var b=db.unitTrash.length;
+  db.unitTrash=db.unitTrash.filter(function(t){return daysLeft(t.deletedAt)>0;});
+  if(db.unitTrash.length!==b)idbSave();
+}
+function restoreUnit(unitId){
+  if(!db.unitTrash)return;
+  var idx=db.unitTrash.findIndex(function(t){return t.unit.id===unitId;});
+  if(idx===-1)return;
+  db.units.push(db.unitTrash[idx].unit);
+  db.unitTrash.splice(idx,1);
+  idbSave();closeModal();setTimeout(showUnitTrash,60);renderUnits();toast('Unit restored');
+}
+function permanentDeleteUnit(unitId){
+  if(!db.unitTrash)return;
+  var t=db.unitTrash.find(function(x){return x.unit.id===unitId;});
+  if(!t||!confirm('Permanently delete '+t.unit.epcor+'?'))return;
+  db.unitTrash=db.unitTrash.filter(function(x){return x.unit.id!==unitId;});
+  idbSave();closeModal();setTimeout(showUnitTrash,60);toast('Permanently deleted');
+}
 function exportBackup(){var blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='vault_'+new Date().toLocaleDateString('en-CA')+'.json';a.click();URL.revokeObjectURL(url);toast('Backup exported!');}
 function importBackup(e){var file=e.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(ev){try{var p=JSON.parse(ev.target.result);if(p.maps&&p.units){if(!confirm('Replace all current data with this backup?'))return;if(!p.trash)p.trash=[];db=p;idbSave();showMaps();toast('Backup imported!');}else toast('Invalid backup file');}catch(err){toast('Could not read file');}};r.readAsText(file);e.target.value='';}
 
@@ -1011,3 +1061,56 @@ function removeDraftAndClose(){
   // since we removed it from the list when resuming, just close
   clearDraft();closeModal();renderUnits();
 }
+
+// ── RIPPLE EFFECT ─────────────────────────────────────────────────────────────
+function createRipple(e){
+  var el=e.currentTarget;
+  var rect=el.getBoundingClientRect();
+  var x=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  var y=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  var size=Math.max(rect.width,rect.height)*2;
+  var wave=document.createElement('span');
+  wave.className='ripple-wave';
+  wave.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(x-size/2)+'px;top:'+(y-size/2)+'px;opacity:0.6';
+  el.appendChild(wave);
+  wave.addEventListener('animationend',function(){wave.remove();});
+}
+function initRipples(){
+  // Buttons
+  document.querySelectorAll('.btn').forEach(function(el){
+    if(!el.classList.contains('ripple-host')){
+      el.classList.add('ripple-host');
+      el.addEventListener('mousedown',createRipple);
+      el.addEventListener('touchstart',createRipple,{passive:true});
+    }
+  });
+  // Card taps
+  document.querySelectorAll('.card-tap').forEach(function(el){
+    if(!el.classList.contains('ripple-host')){
+      el.classList.add('ripple-host');
+      el.addEventListener('mousedown',createRipple);
+      el.addEventListener('touchstart',createRipple,{passive:true});
+    }
+  });
+  // Dot menu items
+  document.querySelectorAll('.dot-item').forEach(function(el){
+    if(!el.classList.contains('ripple-host')){
+      el.classList.add('ripple-host');
+      el.addEventListener('mousedown',createRipple);
+      el.addEventListener('touchstart',createRipple,{passive:true});
+    }
+  });
+}
+// Re-init ripples after any screen render or modal open
+var _origOpenModal=openModal;
+openModal=function(html){
+  _origOpenModal(html);
+  setTimeout(initRipples,60);
+};
+var _origSetScreen=setScreen;
+setScreen=function(name,dir){
+  _origSetScreen(name,dir);
+  setTimeout(initRipples,80);
+};
+// Init on first load
+setTimeout(initRipples,200);

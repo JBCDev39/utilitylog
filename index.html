@@ -306,6 +306,16 @@
     .anim-back{animation:slideInLeft 0.22s var(--ease)}
     .anim-fade{animation:fadeUp 0.2s var(--ease)}
     .card-anim{animation:cardIn 0.22s var(--ease) both}
+
+    /* ── RIPPLE ── */
+    .ripple-host{position:relative;overflow:hidden}
+    .ripple-wave{position:absolute;border-radius:50%;transform:scale(0);animation:ripple-anim 0.5s linear;pointer-events:none}
+    @keyframes ripple-anim{to{transform:scale(4);opacity:0}}
+    .btn-primary .ripple-wave{background:rgba(255,255,255,0.25)}
+    .ripple-wave{background:rgba(255,255,255,0.18)}
+    .btn:not(.btn-primary) .ripple-wave{background:rgba(34,197,94,0.22)}
+    .card-tap .ripple-wave{background:rgba(34,197,94,0.12)}
+    .dot-item .ripple-wave{background:rgba(255,255,255,0.12)}
     ::-webkit-scrollbar{width:0}
   </style>
 </head>
