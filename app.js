@@ -9,7 +9,7 @@ var DRAFT_KEY='ulf_drafts'; // array of drafts per map
 // - STATE -
 var DB_NAME='utilityInspect',DB_VER=1,STORE='data';
 var idb=null;
-var db={maps:[],units:[],trash:[]};
+var db={maps:[],units:[],trash:[],unitTrash:[]};
 var state={screen:'maps',mapId:null,unitId:null,filter:'All',sort:'asap'};
 var patchCount=0;
 var formState={mode:'new',unitId:null,pendingPhotoKey:null,failTypeVal:'Rust Holes (Door)'};
@@ -32,7 +32,7 @@ function idbGet(cb){
   if(!idb)return cb();
   var tx=idb.transaction(STORE,'readonly');
   var req=tx.objectStore(STORE).get('db');
-  req.onsuccess=function(e){if(e.target.result){db=e.target.result;if(!db.trash)db.trash=[];}cb();};
+  req.onsuccess=function(e){if(e.target.result){db=e.target.result;if(!db.trash)db.trash=[];if(!db.unitTrash)db.unitTrash=[];}cb();};
   req.onerror=function(){cb();};
 }
 function idbSave(){if(!idb)return;idb.transaction(STORE,'readwrite').objectStore(STORE).put(db,'db');}
@@ -382,6 +382,7 @@ function showUnits(mapId,dir){
     +'<div class="dot-item" onclick="closeDotMenu();showSummary()">Summary</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportPDF()">PDF — Full report</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportSupervisorPDF()">PDF — Supervisor</div>'
+    +'<div class="dot-item" style="color:var(--fail)" onclick="showUnitTrash()">Deleted units</div>'
     +'</div></div>';
   $('filterVal').textContent='All units';$('searchInput').value='';
   $('controlsRow').classList.add('visible');showFabMenu();renderUnits();setScreen('units',dir||'forward');
@@ -887,7 +888,23 @@ function exportBackup(){var blob=new Blob([JSON.stringify(db,null,2)],{type:'app
 function importBackup(e){var file=e.target.files[0];if(!file)return;var r=new FileReader();r.onload=function(ev){try{var p=JSON.parse(ev.target.result);if(p.maps&&p.units){if(!confirm('Replace all current data with this backup?'))return;if(!p.trash)p.trash=[];db=p;idbSave();showMaps();toast('Backup imported!');}else toast('Invalid backup file');}catch(err){toast('Could not read file');}};r.readAsText(file);e.target.value='';}
 
 // - MODAL -
-function openModal(html){$('modalBox').innerHTML='<div class="modal-handle"></div>'+html;$('overlay').classList.add('open');}
+function openModal(html){
+  $('modalBox').innerHTML='<div class="modal-handle"></div>'+html;
+  $('overlay').classList.add('open');
+  var modal=$('modalBox');
+  if(modal){
+    modal.style.transition='none';
+    modal.style.transform='translateY(100%)';
+    modal.style.opacity='0';
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){
+        modal.style.transition='transform 0.32s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s ease';
+        modal.style.transform='';
+        modal.style.opacity='';
+      });
+    });
+  }
+}
 function closeModal(){
   var overlay=$('overlay');
   var modal=overlay?overlay.querySelector('.modal'):null;
