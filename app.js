@@ -1,6 +1,3 @@
-var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num" style="color:var(--door-fail)">'+g.totalDoorFails+'</div><div class="stat-cell-lbl">Door Fails</div></div></div></div>';function isDoorFail(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';}
-function isRealFail(u){return u.status==='Fail'&&u.failType!=='Rust Holes (Door)';}
-// - CONSTANTS -
 var FAIL_TYPES=['Rust Holes (Door)','Rust Holes (Unit)','Rust Holes (Unit & Door)','Oil Leak','Structural Damage'];
 var STATUS_ORDER={Fail:0,'Door Fail':1,Vegetation:2,'No Access':3,Other:4};
 var FORM_KEY='ulf_form';
@@ -338,7 +335,7 @@ function showMaps(dir){
 }
 function renderMaps(){
   var c=$('screenMaps');var g=calcGlobalStats();
-  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalPatches+'</div><div class="stat-cell-lbl">Patches</div></div></div>'+(g.totalVeg?'<div class="stats-divider"></div><div style="font-size:12px;color:var(--text2)">'+g.totalVeg+' vegetation · '+g.activeMaps+' active map'+(g.activeMaps!==1?'s':'')+'</div>':'')+'</div>';
+  var banner='<div class="stats-banner card-anim"><div class="stats-banner-title">Season overview</div><div class="stats-row"><div class="stat-cell"><div class="stat-cell-num">'+g.totalMaps+'</div><div class="stat-cell-lbl">Maps</div></div><div class="stat-cell"><div class="stat-cell-num">'+g.totalUnits+'</div><div class="stat-cell-lbl">Units</div></div><div class="stat-cell"><div class="stat-cell-num'+(g.totalFails?' red':'')+'">'+g.totalFails+'</div><div class="stat-cell-lbl">Fails</div></div><div class="stat-cell"><div class="stat-cell-num" style="color:var(--door-fail)">'+g.totalDoorFails+'</div><div class="stat-cell-lbl">Door Fails</div></div></div></div>';
   if(!db.maps.length){c.innerHTML=banner+'<div class="empty-state"><div class="empty-title">No maps yet</div><div class="empty-sub">Tap + to create your first map</div></div>'+dataSection();return;}
   c.innerHTML=banner+db.maps.map(function(m,i){
     var us=db.units.filter(function(u){return u.mapId===m.id;});
