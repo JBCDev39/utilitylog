@@ -382,7 +382,7 @@ function showUnits(mapId,dir){
     +'<div class="dot-item" onclick="closeDotMenu();showSummary()">Summary</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportPDF()">PDF — Full report</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportSupervisorPDF()">PDF — Supervisor</div>'
-    +'<div class="dot-item" style="color:var(--fail)" onclick="showUnitTrash()">Deleted units</div>'
+    +'<div class="dot-item" style="color:var(--fail)" onclick="closeDotMenu();setTimeout(showUnitTrash,160)">Deleted units</div>'
     +'</div></div>';
   $('filterVal').textContent='All units';$('searchInput').value='';
   $('controlsRow').classList.add('visible');showFabMenu();renderUnits();setScreen('units',dir||'forward');
@@ -523,7 +523,7 @@ function renderUnitDetail(u){
         }).join('')+'</div>';
     }).join('');
   }
-  html+='<div style="margin-top:24px;padding-bottom:20px"><button class="btn btn-danger" style="width:100%" onclick="deleteUnit(\''+u.id+'\')">Delete unit</button></div>';
+  html+='<div style="margin-top:24px;padding-bottom:20px"><button class="btn btn-danger" style="width:100%" onclick="softDeleteUnit(\''+u.id+'\')">Move to trash</button></div>';
   $('screenUnit').innerHTML=html;
 }
 function detailPhotoSlot(u,key,label){
@@ -894,11 +894,11 @@ function openModal(html){
   var modal=$('modalBox');
   if(modal){
     modal.style.transition='none';
-    modal.style.transform='translateY(100%)';
+    modal.style.transform='translateY(28px)';
     modal.style.opacity='0';
     requestAnimationFrame(function(){
       requestAnimationFrame(function(){
-        modal.style.transition='transform 0.32s cubic-bezier(0.34,1.56,0.64,1),opacity 0.2s ease';
+        modal.style.transition='transform 0.38s cubic-bezier(0.25,0.46,0.45,0.94),opacity 0.28s ease';
         modal.style.transform='';
         modal.style.opacity='';
       });
