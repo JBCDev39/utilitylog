@@ -278,7 +278,7 @@ function showMaps(dir){
   state.mapId=null;state.unitId=null;
   var t=$('topTitle');var l=$('logoWrap');var bw=$('backWrap');
   if(t)t.style.display='none';
-  if(l)l.style.display='flex';
+  if(l){l.style.display='flex';l.style.visibility='visible';}
   if(bw)bw.style.display='none';
   $('controlsRow').classList.remove('visible');
   purgeExpiredTrash();var tc=db.trash.length;
@@ -376,13 +376,12 @@ function showUnits(mapId,dir){
   var map=db.maps.find(function(m){return m.id===mapId;});
   setTitle(esc(map.name));
   $('topActs').innerHTML=
-    '<button class="btn btn-sm" onclick="showGallery()">Gallery</button>'
-    +'<div class="dot-menu-wrap"><button class="dot-btn" id="dotBtn" onclick="toggleDotMenu()" aria-label="More options"><span></span><span></span><span></span></button>'
+    '<div class="dot-menu-wrap"><button class="dot-btn" id="dotBtn" onclick="toggleDotMenu()" aria-label="More options"><span></span><span></span><span></span></button>'
     +'<div class="dot-dropdown" id="dotDropdown">'
+    +'<div class="dot-item" onclick="closeDotMenu();showGallery()">Gallery</div>'
     +'<div class="dot-item" onclick="closeDotMenu();showSummary()">Summary</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportPDF()">PDF — Full report</div>'
     +'<div class="dot-item" onclick="closeDotMenu();exportSupervisorPDF()">PDF — Supervisor</div>'
-    
     +'</div></div>';
   $('filterVal').textContent='All units';$('searchInput').value='';
   $('controlsRow').classList.add('visible');showFabMenu();renderUnits();setScreen('units',dir||'forward');
