@@ -350,7 +350,7 @@ function renderMaps(){
     var isComplete=m.status==='Completed';
     var cam='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color:var(--text3)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
     var thumb=m.photo?'<img class="map-thumb" src="'+m.photo+'" onclick="viewMapPhoto(\''+m.id+'\')" alt="Map">':'<div class="map-thumb-ph">'+cam+'</div>';
-    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')" ><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+( m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':''  )+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+''+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+''+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+''+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+''+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+'</div><div style=\"border-top:0.5px solid var(--border);padding-top:8px;margin-top:8px;display:flex;justify-content:flex-end\">'+mapCardDot(m)+'</div></div></div></div>';
+    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')" ><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+( m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':''  )+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+''+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+''+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+''+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+''+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+''+mapCardDot(m)+'</div></div></div></div>';
   }).join('')+dataSection();
 }
 function dataSection(){return '<div class="section-lbl" style="margin-top:4px">Data</div><div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:8px"><button class="btn" onclick="exportBackup()">Export backup</button><button class="btn" onclick="$(\'importFile\').click()">Import backup</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/></div>';}
@@ -407,40 +407,54 @@ function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
 
 // - TRASH -
+function showMapDot(mapId, btn){
+  var float=$('mapDotFloat');
+  if(!float)return;
+  var src=$('mapDD_'+mapId);
+  if(!src)return;
+  float.innerHTML=src.innerHTML;
+  float.setAttribute('data-map',mapId);
+  var rect=btn.getBoundingClientRect();
+  var floatW=170;
+  float.style.cssText='position:fixed;z-index:999;display:block;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:'+floatW+'px;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden;'
+    +'left:'+Math.max(8,Math.min(rect.right-floatW,window.innerWidth-floatW-8))+'px;'
+    +'top:'+(rect.bottom+6)+'px;'
+    +'opacity:0;transform:scale(0.95) translateY(-4px);transition:opacity 0.15s var(--ease),transform 0.15s var(--ease);';
+  requestAnimationFrame(function(){
+    float.style.opacity='1';
+    float.style.transform='scale(1) translateY(0)';
+  });
+  setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);
+}
 function toggleMapDotById(e,mapId){
   e.stopPropagation();
   var float=$('mapDotFloat');
   if(!float)return;
-  // If already showing for this map, close it
-  if(float.getAttribute('data-map')===mapId&&float.style.display!=='none'){
-    closeAllMapDots();return;
+  var currentMap=float.getAttribute('data-map');
+  var isOpen=float.style.display!=='none'&&float.style.opacity!=='0';
+  if(isOpen&&currentMap===mapId){
+    // Same card — close
+    closeAllMapDots();
+  } else if(isOpen&&currentMap!==mapId){
+    // Different card — close then open new one after exit anim
+    var btn=e.currentTarget||e.target;
+    float.style.opacity='0';
+    float.style.transform='scale(0.95) translateY(-4px)';
+    setTimeout(function(){
+      float.style.display='none';
+      float.removeAttribute('data-map');
+      showMapDot(mapId,btn);
+    },140);
+  } else {
+    // Nothing open — open directly
+    showMapDot(mapId,e.currentTarget||e.target);
   }
-  // Find the source dropdown content
-  var src=$('mapDD_'+mapId);
-  if(!src)return;
-  // Copy content into floating dropdown
-  float.innerHTML=src.innerHTML;
-  float.setAttribute('data-map',mapId);
-  // Position below the button
-  var btn=e.currentTarget||e.target;
-  var rect=btn.getBoundingClientRect();
-  float.style.display='block';
-  var floatW=170;
-  var left=Math.min(rect.right-floatW, window.innerWidth-floatW-8);
-  var top=rect.bottom+6;
-  float.style.left=Math.max(8,left)+'px';
-  float.style.top=top+'px';
-  float.style.minWidth=floatW+'px';
-  // Animate in
-  float.style.opacity='0';float.style.transform='scale(0.95) translateY(-4px)';
-  float.style.transition='opacity 0.15s var(--ease),transform 0.15s var(--ease)';
-  requestAnimationFrame(function(){float.style.opacity='1';float.style.transform='scale(1) translateY(0)';});
-  setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);
 }
 function closeAllMapDots(){
   var float=$('mapDotFloat');
   if(float&&float.style.display!=='none'){
-    float.style.opacity='0';float.style.transform='scale(0.95) translateY(-4px)';
+    float.style.opacity='0';
+    float.style.transform='scale(0.95) translateY(-4px)';
     setTimeout(function(){float.style.display='none';float.removeAttribute('data-map');},140);
   }
 }
