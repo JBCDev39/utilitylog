@@ -349,8 +349,7 @@ function renderMaps(){
     var date=m.createdAt?new Date(m.createdAt).toLocaleDateString('en-CA'):'';
     var isComplete=m.status==='Completed';
     var cam='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color:var(--text3)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
-    var thumb=m.photo?'<img class="map-thumb" src="'+m.photo+'" onclick="viewMapPhoto(\''+m.id+'\')" alt="Map">':'<div class="map-thumb-ph">'+cam+'</div>';
-    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')" ><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+( m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':''  )+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+''+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+''+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+''+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+''+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+thumb+''+mapCardDot(m)+'</div></div></div></div>';
+    return '<div class="card card-anim" style="animation-delay:'+(i*0.04)+'s'+(isComplete?';opacity:0.65':'')+'"><div class="card-row" onclick="showUnits(\''+m.id+'\')" style="cursor:pointer"><div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap"><div class="card-title">'+esc(m.name)+'</div>'+mapTypeBadge(m.type)+'<div class="map-status-pill '+(isComplete?'completed':'active')+'" onclick="toggleMapStatus(event,\''+m.id+'\')" ><div class="pill-dot"></div>'+(isComplete?'Completed':'Active')+'</div></div>'+( m.notes?'<div style="font-size:12px;color:var(--text3);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(m.notes)+'</div>':''  )+'<div class="card-meta"><span>'+us.length+' unit'+(us.length!==1?'s':'')+'</span>'+(fails?'<span class="red">'+fails+' fail'+(fails>1?'s':'')+'</span>':'')+''+(doorFails?'<span style="color:var(--door-fail)">'+doorFails+' door fail'+(doorFails>1?'s':'')+'</span>':'')+''+(vegs?'<span style="color:var(--veg)">'+vegs+' veg</span>':'')+''+(patches?'<span>'+patches+' patch'+(patches>1?'es':'')+'</span>':'')+''+(incomplete?'<span class="warn">'+incomplete+' incomplete</span>':'')+'</div></div>'+mapCardDot(m)+'</div></div></div></div>';
   }).join('')+dataSection();
 }
 function dataSection(){return '<div class="section-lbl" style="margin-top:4px">Data</div><div style="display:flex;gap:8px;flex-wrap:wrap;padding-bottom:8px"><button class="btn" onclick="exportBackup()">Export backup</button><button class="btn" onclick="$(\'importFile\').click()">Import backup</button><input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/></div>';}
@@ -395,14 +394,11 @@ function viewMapPhoto(mapId){
     +'<div id="zoomWrap" style="overflow:hidden;border-radius:var(--radius);background:var(--bg2);touch-action:none;position:relative;max-height:55vh;display:flex;align-items:center;justify-content:center;margin-bottom:14px">'
     +'<img id="zoomImg" src="'+m.photo+'" style="max-width:100%;max-height:55vh;object-fit:contain;transform-origin:center;display:block;user-select:none" draggable="false">'
     +'</div>'
-    +'<div style="display:flex;gap:8px">'
-    +'<button class="btn btn-danger" style="flex:1" onclick="removeMapPhoto(\'+mapId+\')" >Remove</button>'
-    +'<button class="btn" style="flex:1" onclick="closeModal()">Close</button>'
-    +'</div>'
+    +'<button class="btn" style="width:100%;padding:12px" onclick="closeModal()">Close</button>'
   );
-  setTimeout(setupZoom, 80);
+  setTimeout(setupZoom,80);
 }
-function removeMapPhoto(mapId){var m=db.maps.find(function(x){return x.id===mapId;});delete m.photo;idbSave();closeModal();renderMaps();toast('Photo removed');}
+function removeMapPhoto(mapId){var m=db.maps.find(function(x){return x.id===mapId;});if(!m)return;delete m.photo;idbSave();renderMaps();toast('Photo removed');}
 function editMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});openModal('<p class="modal-title">Map notes</p><div class="form-group"><label class="form-label">Notes</label><textarea id="mNotesVal" rows="4" placeholder="Gate code, contact, access info…">'+esc(m.notes||'')+'</textarea></div><button class="btn btn-primary" style="width:100%;padding:13px" onclick="saveMapNotes(\''+mapId+'\')">Save</button>');setTimeout(function(){var el=$('mNotesVal');if(el)el.focus();},150);}
 function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;});m.notes=val('mNotesVal').trim();idbSave();closeModal();renderMaps();toast('Notes saved');}
 
@@ -459,11 +455,16 @@ function closeAllMapDots(){
   }
 }
 function mapCardDot(m){
+  var photoItems=m.photo
+    ?('<div class="dot-item" onclick="closeAllMapDots();viewMapPhoto(\''+m.id+'\')">View photo</div>'
+      +'<div class="dot-item" onclick="closeAllMapDots();addMapPhoto(\''+m.id+'\')">Change photo</div>'
+      +'<div class="dot-item" style="color:var(--fail)" onclick="closeAllMapDots();removeMapPhoto(\''+m.id+'\')">Remove photo</div>')
+    :'<div class="dot-item" onclick="closeAllMapDots();addMapPhoto(\''+m.id+'\')">Add photo</div>';
   return '<div class="dot-menu-wrap" style="position:relative">'
     +'<button class="dot-btn" onclick="event.stopPropagation();toggleMapDotById(event,\''+m.id+'\')">&#8942;</button>'
     +'<div class="dot-dropdown" id="mapDD_'+m.id+'">'
     +'<div class="dot-item" onclick="closeAllMapDots();editMapNotes(\''+m.id+'\')">Notes</div>'
-    +'<div class="dot-item" onclick="closeAllMapDots();addMapPhoto(\''+m.id+'\')">Photo</div>'
+    +photoItems
     +'<div class="dot-item" style="color:var(--fail)" onclick="closeAllMapDots();softDeleteMap(\''+m.id+'\',\''+esc(m.name)+'\')">Delete</div>'
     +'</div></div>';
 }
