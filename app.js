@@ -409,14 +409,40 @@ function saveMapNotes(mapId){var m=db.maps.find(function(x){return x.id===mapId;
 // - TRASH -
 function toggleMapDotById(e,mapId){
   e.stopPropagation();
-  var dd=$('mapDD_'+mapId);
-  if(!dd)return;
-  var wasOpen=dd.classList.contains('open');
-  closeAllMapDots();
-  if(!wasOpen){dd.classList.add('open');setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);}
+  var float=$('mapDotFloat');
+  if(!float)return;
+  // If already showing for this map, close it
+  if(float.getAttribute('data-map')===mapId&&float.style.display!=='none'){
+    closeAllMapDots();return;
+  }
+  // Find the source dropdown content
+  var src=$('mapDD_'+mapId);
+  if(!src)return;
+  // Copy content into floating dropdown
+  float.innerHTML=src.innerHTML;
+  float.setAttribute('data-map',mapId);
+  // Position below the button
+  var btn=e.currentTarget||e.target;
+  var rect=btn.getBoundingClientRect();
+  float.style.display='block';
+  var floatW=170;
+  var left=Math.min(rect.right-floatW, window.innerWidth-floatW-8);
+  var top=rect.bottom+6;
+  float.style.left=Math.max(8,left)+'px';
+  float.style.top=top+'px';
+  float.style.minWidth=floatW+'px';
+  // Animate in
+  float.style.opacity='0';float.style.transform='scale(0.95) translateY(-4px)';
+  float.style.transition='opacity 0.15s var(--ease),transform 0.15s var(--ease)';
+  requestAnimationFrame(function(){float.style.opacity='1';float.style.transform='scale(1) translateY(0)';});
+  setTimeout(function(){document.addEventListener('click',closeAllMapDots,{once:true});},0);
 }
 function closeAllMapDots(){
-  document.querySelectorAll('[id^="mapDD_"]').forEach(function(el){el.classList.remove('open');});
+  var float=$('mapDotFloat');
+  if(float&&float.style.display!=='none'){
+    float.style.opacity='0';float.style.transform='scale(0.95) translateY(-4px)';
+    setTimeout(function(){float.style.display='none';float.removeAttribute('data-map');},140);
+  }
 }
 function mapCardDot(m){
   return '<div class="dot-menu-wrap" style="position:relative">'
