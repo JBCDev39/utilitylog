@@ -7,7 +7,7 @@ var DRAFT_KEY='ulf_drafts'; // array of drafts per map
 var DB_NAME='utilityInspect',DB_VER=1,STORE='data';
 var idb=null;
 var db={maps:[],units:[],trash:[],unitTrash:[]};
-var state={screen:'maps',mapId:null,unitId:null,filter:'All',sort:'asap'};
+var state={screen:'maps',mapId:null,unitId:null,filter:'All'};
 var patchCount=0;
 var formState={mode:'new',unitId:null,pendingPhotoKey:null,failTypeVal:'Rust Holes (Door)'};
 var formPhotos={before:null,after:null};
@@ -253,8 +253,7 @@ function setScreen(name,dir){
   state.screen=name;$('mainContent').scrollTop=0;
 }
 function goBack(){
-  if(state.screen==='unit')showUnits(state.mapId,'back');
-  else if(state.screen==='gallery')showUnits(state.mapId,'back');
+  if(state.screen==='unit'||state.screen==='gallery')showUnits(state.mapId,'back');
   else showMaps('back');
 }
 
@@ -266,9 +265,7 @@ function calcGlobalStats(){
     totalMaps:db.maps.length,totalUnits:db.units.length,
     totalFails:db.units.filter(function(u){return isRealFail(u);}).length,
     totalDoorFails:db.units.filter(function(u){return isDoorFail(u);}).length,
-    totalPatches:db.units.reduce(function(a,u){return a+(u.patches||0);},0),
-    totalVeg:db.units.filter(function(u){return u.status==='Vegetation';}).length,
-    activeMaps:db.maps.filter(function(m){return m.status!=='Completed';}).length
+    totalPatches:db.units.reduce(function(a,u){return a+(u.patches||0);},0)
   };
 }
 
@@ -482,7 +479,7 @@ function permanentDeleteMap(idx){if(!confirm('Permanently delete "'+db.trash[idx
 
 // - UNITS -
 function showUnits(mapId,dir){
-  state.mapId=mapId;state.filter='All';state.sort='asap';
+  state.mapId=mapId;state.filter='All';
   var map=db.maps.find(function(m){return m.id===mapId;});
   setTitle(esc(map.name));
   $('topActs').innerHTML=
@@ -505,8 +502,7 @@ function renderUnits(){
   else if(state.filter==='Door Fail'){us=us.filter(function(u){return u.status==='Fail'&&u.failType==='Rust Holes (Door)';});}
   else if(state.filter!=='All'){us=us.filter(function(u){return u.status===state.filter;});}
   if(q)us=us.filter(function(u){return (u.epcor||'').toLowerCase().includes(q)||(u.asap||'').toString().includes(q);});
-  if(state.sort==='status'){us.sort(function(a,b){var ao=STATUS_ORDER[a.status]!==undefined?STATUS_ORDER[a.status]:9;var bo=STATUS_ORDER[b.status]!==undefined?STATUS_ORDER[b.status]:9;return ao!==bo?ao-bo:(a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});}
-  else{us.sort(function(a,b){return (a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});}
+  us.sort(function(a,b){return (a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});
   var c=$('screenUnits');
   var draftHtml='';
   if(hasDraft){
@@ -611,7 +607,6 @@ function showUnit(id){
 function renderUnitDetail(u){
   var isFail=u.status==='Fail';
   var issues=getUnitIssues(u);
-  var camSVG='<svg width="20" height="20" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
   var html='';
   if(issues.length){html+='<div style="background:var(--warn-bg);border:0.5px solid var(--warn-border);border-radius:var(--radius);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--warn)">Incomplete: '+issues.join(' · ')+'</div>';}
   html+='<div class="unit-header anim-fade"><div class="card-row" style="margin-bottom:10px"><div style="font-size:22px;font-weight:700;letter-spacing:-0.5px;font-family:monospace">'+esc(u.epcor)+'</div>'+statusBadge(u.status,issues.length>0)+'</div><div style="display:flex;gap:8px;flex-wrap:wrap">'+typeBadge(u.unitType||'Pedestal')+(u.asap?'<span style="font-size:12px;color:var(--text2);align-self:center">ASAP #'+esc(u.asap)+'</span>':'')+(u.fins?'<span class="badge" style="background:rgba(96,165,250,0.1);color:#60a5fa">Fins</span>':'')+'</div></div>';
@@ -662,7 +657,6 @@ function removeDetailPhoto(unitId,key){
   delete u[key+'Photo'];recordHistory(u,prev);idbSave();closeModal();
   renderUnitDetail(db.units.find(function(x){return x.id===state.unitId;}));toast('Photo removed');
 }
-function deleteUnit(id){if(!confirm('Delete this unit?'))return;db.units=db.units.filter(function(u){return u.id!==id;});idbSave();goBack();toast('Unit deleted');}
 
 // - ANNOTATION -
 function showAnnotationModal(dataUrl,unitId,key){
@@ -816,11 +810,6 @@ function compactPhotoBtn(key){
   }
   return '<button class="btn" style="flex:1;height:72px;flex-direction:column;gap:5px;border-style:dashed" onclick="formLaunch(\''+key+'\',false)">'+camSVG+'<span style="font-size:11px">'+label+'</span></button>';
 }
-function formPhotoSlotInner(key){
-  var camSVG='<svg width="22" height="22" viewBox="0 0 20 20" fill="none" style="color:var(--grn-text)"><path d="M2 7a2 2 0 012-2h.5l1-2h9l1 2H16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V7z" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="3" stroke="currentColor" stroke-width="1.5"/></svg>';
-  if(formPhotos[key])return '<img class="photo-form-preview" src="'+formPhotos[key]+'" alt="photo"><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Retake</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button><button onclick="formRemovePhoto(\''+key+'\')">Remove</button></div>';
-  return '<div class="photo-form-empty" onclick="formLaunch(\''+key+'\',false)">'+camSVG+'<span class="pfe-lbl">Tap to add</span></div><div class="photo-form-actions"><button onclick="formLaunch(\''+key+'\',true)">Camera</button><button onclick="formLaunch(\''+key+'\',false)">Gallery</button></div>';
-}
 function refreshFormPhotoSlot(key){var c=$('photoCompact');if(c)c.innerHTML=compactPhotoBtn('before')+compactPhotoBtn('after');}
 function formRemovePhoto(key){formPhotos[key]=null;refreshFormPhotoSlot(key);saveFormState();}
 function formLaunch(key,cam){
@@ -922,7 +911,7 @@ function exportPDF(){
   if(typeof jspdf==='undefined'){toast('PDF not ready, try again');return;}
   var map=db.maps.find(function(m){return m.id===state.mapId;});
   var us=db.units.filter(function(u){return u.mapId===state.mapId;});
-  if(state.sort==='status'){us.sort(function(a,b){var ao=STATUS_ORDER[a.status]!==undefined?STATUS_ORDER[a.status]:9;var bo=STATUS_ORDER[b.status]!==undefined?STATUS_ORDER[b.status]:9;return ao!==bo?ao-bo:(a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});}else{us.sort(function(a,b){return (a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});}
+  us.sort(function(a,b){return (a.asap?+a.asap:9999)-(b.asap?+b.asap:9999);});
   if(!us.length){toast('No units to export');return;}toast('Generating PDF…');
   var doc=new jspdf.jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
   var date=new Date().toLocaleDateString('en-CA');var pw=doc.internal.pageSize.getWidth();
@@ -1003,8 +992,7 @@ function exportUnitPDF(id){
   doc.save(u.epcor.replace(/\s+/g,'_')+'_'+date+'.pdf');setTimeout(function(){toast('PDF saved!');},600);
 }
 
-// - BACKUP -
-
+// - UNIT TRASH -
 function softDeleteUnit(unitId){
   var u=db.units.find(function(x){return x.id===unitId;});
   if(!u)return;
@@ -1175,7 +1163,6 @@ function setupZoom(){
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 openIDB(function(){idbGet(function(){if(!restoreFormIfNeeded())showMaps();});});
 
-// - EXTRAS -
 function removeDraftAndClose(){
   // called from form discard button — need to find the draft being edited
   // since we removed it from the list when resuming, just close
