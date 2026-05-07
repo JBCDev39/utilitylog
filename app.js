@@ -1197,14 +1197,7 @@ function initRipples(){
       el.addEventListener('touchstart',createRipple,{passive:true});
     }
   });
-  // Map cards (home screen) — ripple on the whole card
-  document.querySelectorAll('#screenMaps .card').forEach(function(el){
-    if(!el.classList.contains('ripple-host')){
-      el.classList.add('ripple-host');
-      el.addEventListener('mousedown',createRipple);
-      el.addEventListener('touchstart',createRipple,{passive:true});
-    }
-  });
+  // Map cards excluded from ripple — overflow:hidden clips the dot dropdown
   // Dot menu items
   document.querySelectorAll('.dot-item').forEach(function(el){
     if(!el.classList.contains('ripple-host')){

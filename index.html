@@ -310,7 +310,7 @@
 
     /* ── RIPPLE ── */
     .ripple-host{position:relative;overflow:hidden}
-    #screenMaps .card.ripple-host{overflow:visible}
+
     .ripple-wave{position:absolute;border-radius:50%;transform:scale(0);animation:ripple-anim 0.5s linear;pointer-events:none}
     @keyframes ripple-anim{to{transform:scale(4);opacity:0}}
     .btn-primary .ripple-wave{background:rgba(255,255,255,0.25)}
@@ -379,7 +379,7 @@
   <div class="modal" id="modalBox"><div class="modal-handle"></div></div>
 </div>
 <div class="toast" id="toast"></div>
-<div id="mapDotFloat" style="position:fixed;z-index:500;display:none;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden"></div>
+<div id="mapDotFloat" style="position:fixed;z-index:999;display:none;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-lg);min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,0.5);overflow:hidden"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
 <script src="app.js"></script>
